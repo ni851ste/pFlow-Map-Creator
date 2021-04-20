@@ -1,10 +1,13 @@
 import tkinter as tk
 import random
 
-window_width = "1000"
+window_width = "1050"
 window_height = "600"
 
-drawingSpace2 = 0
+drawing_space = None
+
+labels = []
+wall_points = []
 
 
 def drag_start(event):
@@ -20,8 +23,12 @@ def drag_motion(event):
     widget.place(x=x, y=y)
 
 
+def left_click_canvas(event):
+    print('X:{0} Y:{1}'.format(event.x, event.y))
+
+
 def init_window():
-    global drawingSpace2
+    global drawing_space
     window = tk.Tk()
     window.config(background="#CCCCCC")
     window.geometry("{0}x{1}".format(window_width, window_height))
@@ -32,11 +39,6 @@ def init_window():
 
     drawing_space = tk.Canvas(left_frame, width=800, height=600, bg='white')
     drawing_space.grid(row=0, column=0)
-    drawingSpace2 = drawing_space
-
-    # tk.Label(left_frame, text="Instructions:").grid(row=0, column=0, padx=10, pady=2)
-    # instructions = tk.Label(left_frame, text="1\n2\n2\n3\n4\n5\n6\n7\n8\n9\n")
-    # instructions.grid(row=1, column=0, padx=10, pady=2)
 
     right_frame = tk.Frame(window, width=200, height=600)
     right_frame.grid(row=0, column=1, padx=2, pady=2)
@@ -56,8 +58,10 @@ def init_window():
     return window
 
 
-def add_label(window=drawingSpace2, color="grey", width=30, height=30):
+def add_label(window=drawing_space, color="grey", width: int = 30, height: int = 30):
     # Adding a label (here mostly squares) and to given canvas
+
+    # Squares' size is pixelbased because an empty image is used
     i = tk.PhotoImage()
     label = tk.Label(window, image=i, width=width, height=height, bg=color)
 
@@ -66,19 +70,15 @@ def add_label(window=drawingSpace2, color="grey", width=30, height=30):
     label.bind("<Button-1>", drag_start)
     label.bind("<B1-Motion>", drag_motion)
 
+    global labels
+    labels.append(label)
+
     return label
 
 
 def main():
-    labels = []
 
     window = init_window()
-
-    # label = tkinter.Label(window, bg="red", width=10, height=5)
-    # label.place(x=0, y=0)
-
-    # label2 = tkinter.Label(window, bg="blue", width=10, height=5)
-    # label2.place(x=100, y=100)
 
     window.mainloop()
 
