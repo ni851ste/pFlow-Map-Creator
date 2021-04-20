@@ -3,9 +3,11 @@ import random
 
 window_width = "1050"
 window_height = "610"
+point_size = 20
+
 
 # TODO -1- Needs work for clean separation into classes
-drawing_canvas = None
+drawing_canvas: tk.Canvas = None
 
 labels = []
 wall_points = []
@@ -25,7 +27,25 @@ def drag_motion(event):
 
 
 def left_click_canvas(event):
-    print('X:{0} Y:{1}'.format(event.x, event.y))
+    x, y = event.x, event.y
+
+    #print('X:{0} Y:{1}'.format(x, y))
+
+    drawing_canvas.create_oval([x - (point_size / 2), y - (point_size / 2),
+                                x + (point_size / 2), y + (point_size / 2)],
+                               outline='red', fill='red')
+
+    global wall_points
+    wall_points.append((x, y))
+
+    if len(wall_points) > 1:
+        two_points = wall_points[-2:]
+        a = two_points[0]
+        b = two_points[1]
+        #print(a[0])
+        #print(b[0])
+
+        drawing_canvas.create_line([a[0], a[1], b[0], b[1]], fill='black')
 
 
 def add_label(window=drawing_canvas, color="grey", width: int = 30, height: int = 30):
