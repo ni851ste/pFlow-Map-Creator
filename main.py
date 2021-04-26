@@ -28,7 +28,7 @@ def drag_motion(event):
     widget.place(x=x, y=y)
 
 
-def left_click_canvas(event):
+def draw_wall_points(event):
     x, y = event.x, event.y
 
     drawing_canvas.create_oval([x - (point_size / 2), y - (point_size / 2),
@@ -39,13 +39,27 @@ def left_click_canvas(event):
     wall_points.append((x, y))
 
     if len(wall_points) > 1:
-        two_points = wall_points[-2:]
-        a = two_points[0]
-        b = two_points[1]
+        to_be_drawn_points = wall_points[-2:]
+        p1 = to_be_drawn_points[0]
+        p2 = to_be_drawn_points[1]
         #print(a[0])
         #print(b[0])
 
-        drawing_canvas.create_line([a[0], a[1], b[0], b[1]], fill='black')
+        drawing_canvas.create_line([p1[0], p1[1], p2[0], p2[1]], fill='black')
+
+
+def finish_wall_points():
+
+    if len(wall_points) < 3:
+        print('Cant finish, since not enough points have been placed.')
+        return
+
+    p1 = wall_points[-1]
+    p2 = wall_points[0]
+    drawing_canvas.create_line([p1[0], p1[1], p2[0], p2[1]], fill='black')
+
+    drawing_canvas.unbind('<Button-1>')
+    return
 
 
 def add_label(window=drawing_canvas, color="grey", width: int = 30, height: int = 30):
@@ -73,7 +87,7 @@ def triangulate(x_max=int(window_width),
 class MainWindow(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.config(background="#CCCCCC")
+        self.config(background="#BBBBBB")
         self.geometry("{0}x{1}".format(window_width, window_height))
 
         self.leftFrame = OwnFrame(self, True)
@@ -89,19 +103,19 @@ class OwnFrame(tk.Frame):
         self.parent = parent
         self.canvas = None
 
-        # Code to run if Frame is on the left side ...
         if left:
+            # Code to run if Frame is on the left side ...
             self.grid(row=0, column=0, padx=2, pady=2)
 
             self.canvas = OwnCanvas(self)
-            self.canvas.bind('<Button-1>', left_click_canvas)
+            self.canvas.bind('<Button-1>', draw_wall_points)
 
             # TODO -1-
             global drawing_canvas
             drawing_canvas = self.canvas
 
-        # here on the right side
         else:
+            # here on the right side
             self.grid(row=0, column=1, padx=2, pady=2)
 
             tk.Label(self, text="Instructions:") \
@@ -114,7 +128,10 @@ class OwnFrame(tk.Frame):
             add_sqr.grid(row=0, column=1)
 
             triangulate_btn = tk.Button(self, text='Calculate Mesh', command=triangulate)
-            triangulate_btn.grid(row=1, column=1)
+            triangulate_btn.grid(row=2, column=1)
+
+            finish_wall_points_btn = tk.Button(self, text='Finish Points', command=finish_wall_points)
+            finish_wall_points_btn.grid(row=1, column=1)
 
 
 class OwnCanvas(tk.Canvas):
