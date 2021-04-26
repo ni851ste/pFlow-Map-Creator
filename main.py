@@ -1,14 +1,16 @@
 import tkinter as tk
 import random
+import tri_utils as tri
 
 window_width = "1050"
 window_height = "610"
-point_size = 20
+point_size = 9
 
 
 # TODO -1- Needs work for clean separation into classes
 drawing_canvas: tk.Canvas = None
 
+# Labels are obstacles like tables etc
 labels = []
 wall_points = []
 
@@ -28,8 +30,6 @@ def drag_motion(event):
 
 def left_click_canvas(event):
     x, y = event.x, event.y
-
-    #print('X:{0} Y:{1}'.format(x, y))
 
     drawing_canvas.create_oval([x - (point_size / 2), y - (point_size / 2),
                                 x + (point_size / 2), y + (point_size / 2)],
@@ -62,6 +62,12 @@ def add_label(window=drawing_canvas, color="grey", width: int = 30, height: int 
 
     global labels
     labels.append(label)
+
+
+def triangulate(x_max=int(window_width),
+                y_max=int(window_height)):
+
+    tri.calculate_mesh(x_max, y_max, wall_points, [])
 
 
 class MainWindow(tk.Tk):
@@ -104,8 +110,11 @@ class OwnFrame(tk.Frame):
             instructions = tk.Label(self, text="1\n2\n2\n3\n4\n5\n6\n7\n8\n9\n")
             instructions.grid(row=1, column=0, padx=10, pady=2)
 
-            go = tk.Button(self, text='Add Square', command=add_label)
-            go.grid(row=0, column=1)
+            add_sqr = tk.Button(self, text='Add Square', command=add_label)
+            add_sqr.grid(row=0, column=1)
+
+            triangulate_btn = tk.Button(self, text='Calculate Mesh', command=triangulate)
+            triangulate_btn.grid(row=1, column=1)
 
 
 class OwnCanvas(tk.Canvas):
