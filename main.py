@@ -42,8 +42,6 @@ def draw_wall_points(event):
         to_be_drawn_points = wall_points[-2:]
         p1 = to_be_drawn_points[0]
         p2 = to_be_drawn_points[1]
-        #print(a[0])
-        #print(b[0])
 
         drawing_canvas.create_line([p1[0], p1[1], p2[0], p2[1]], fill='black')
 
