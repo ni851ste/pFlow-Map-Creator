@@ -2,7 +2,7 @@ import tkinter as tk
 import random
 import tri_utils as tri
 
-window_width = "1050"
+window_width = "1150"
 window_height = "610"
 point_size = 9
 
@@ -48,16 +48,18 @@ def draw_wall_points(event):
         drawing_canvas.create_line([p1[0], p1[1], p2[0], p2[1]], fill='black')
 
 
-def finish_wall_points():
+def finish_wall_points(triangulate_btn):
 
     if len(wall_points) < 3:
         print('Cant finish, since not enough points have been placed.')
         return
 
+    # Draw the last line between first and last given point
     p1 = wall_points[-1]
     p2 = wall_points[0]
     drawing_canvas.create_line([p1[0], p1[1], p2[0], p2[1]], fill='black')
 
+    triangulate_btn.config(state='normal')
     drawing_canvas.unbind('<Button-1>')
     return
 
@@ -124,13 +126,13 @@ class OwnFrame(tk.Frame):
             instructions = tk.Label(self, text="1\n2\n2\n3\n4\n5\n6\n7\n8\n9\n")
             instructions.grid(row=1, column=0, padx=10, pady=2)
 
-            add_sqr = tk.Button(self, text='Add Square', command=add_label)
+            add_sqr = tk.Button(self, text='Add Square (not used yet)', command=add_label)
             add_sqr.grid(row=0, column=1)
 
-            triangulate_btn = tk.Button(self, text='Calculate Mesh', command=triangulate)
+            triangulate_btn = tk.Button(self, text='Calculate Mesh', command=triangulate, state=tk.DISABLED)
             triangulate_btn.grid(row=2, column=1)
 
-            finish_wall_points_btn = tk.Button(self, text='Finish Points', command=finish_wall_points)
+            finish_wall_points_btn = tk.Button(self, text='Finish Points', command=lambda: finish_wall_points(triangulate_btn))
             finish_wall_points_btn.grid(row=1, column=1)
 
 
