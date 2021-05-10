@@ -1,7 +1,7 @@
 import pygimli as pg
 import pygimli.meshtools as mt
 
-granularity = 100     # for fine grain 0.01
+granularity = 1     # for fine grain 0.01
 segment_gran = int(1 / (granularity * 10))
 
 

@@ -1,18 +1,21 @@
+import math
+import sys
 import tkinter as tk
 import random
 import tri_utils as tri
 
 window_width = "1150"
 window_height = "610"
-point_size = 9
-
+point_radius = 5
 
 # TODO -1- Needs work for clean separation into classes
 drawing_canvas: tk.Canvas = None
 
 # Labels are obstacles like tables etc
 labels = []
+
 wall_points = []
+lines = []
 
 
 def drag_start(event):
@@ -31,23 +34,30 @@ def drag_motion(event):
 def draw_wall_points(event):
     x, y = event.x, event.y
 
-    drawing_canvas.create_oval([x - (point_size / 2), y - (point_size / 2),
-                                x + (point_size / 2), y + (point_size / 2)],
-                               outline='red', fill='red')
+    point = drawing_canvas.create_oval([x - point_radius, y - point_radius,
+                                        x + point_radius, y + point_radius],
+                                       outline='black', fill='red')
+
+    print(point)
 
     global wall_points
-    wall_points.append((x, y))
+    # x = X-Coord
+    # y = Y-Coord
+    # point = ID of point in canvas (used to delete and redraw)
+    wall_points.append((x, y, point))
+    # canvas_points.append(point)
 
     if len(wall_points) > 1:
         to_be_drawn_points = wall_points[-2:]
         p1 = to_be_drawn_points[0]
         p2 = to_be_drawn_points[1]
 
-        drawing_canvas.create_line([p1[0], p1[1], p2[0], p2[1]], fill='black')
+        line = drawing_canvas.create_line([p1[0], p1[1], p2[0], p2[1]], fill='black')
+        global lines
+        lines.append(line)
 
 
-def finish_wall_points(triangulate_btn):
-
+def finish_wall_points(triangulate_btn, finish_button):
     if len(wall_points) < 3:
         print('Cant finish, since not enough points have been placed.')
         return
@@ -55,11 +65,43 @@ def finish_wall_points(triangulate_btn):
     # Draw the last line between first and last given point
     p1 = wall_points[-1]
     p2 = wall_points[0]
-    drawing_canvas.create_line([p1[0], p1[1], p2[0], p2[1]], fill='black')
+    line = drawing_canvas.create_line([p1[0], p1[1], p2[0], p2[1]], fill='black')
+    global lines
+    lines.append(line)
 
+    # Apply new state to buttons
     triangulate_btn.config(state='normal')
-    drawing_canvas.unbind('<Button-1>')
+    finish_button.config(state='disabled')
+
+    # Unbind drawing new points
+    drawing_canvas.bind('<Button-1>', edit_wall_points)
+
     return
+
+
+def edit_wall_points(event):
+    x, y = event.x, event.y
+
+    current_min_distance = sys.maxsize
+    point_index_of_min_distance = 0
+
+    for i in range(len(wall_points)):
+        # Find the point nearest to the mouse click
+        point_x = wall_points[i][0]
+        point_y = wall_points[i][1]
+
+        x_diff = abs(point_x - x)
+        y_diff = abs(point_y - y)
+
+        # pythagoras theorem
+        current_distance = math.sqrt((x_diff ** 2) + (y_diff ** 2))
+
+        if current_distance < current_min_distance:
+            current_min_distance = current_distance
+            point_index_of_min_distance = i
+
+    print('Current Min Distance')
+    print(current_min_distance)
 
 
 def add_label(window=drawing_canvas, color="grey", width: int = 30, height: int = 30):
@@ -80,7 +122,6 @@ def add_label(window=drawing_canvas, color="grey", width: int = 30, height: int 
 
 def triangulate(x_max=int(window_width),
                 y_max=int(window_height)):
-
     tri.calculate_mesh(x_max, y_max, wall_points, [])
 
 
@@ -130,7 +171,10 @@ class OwnFrame(tk.Frame):
             triangulate_btn = tk.Button(self, text='Calculate Mesh', command=triangulate, state=tk.DISABLED)
             triangulate_btn.grid(row=2, column=1)
 
-            finish_wall_points_btn = tk.Button(self, text='Finish Points', command=lambda: finish_wall_points(triangulate_btn))
+            finish_wall_points_btn = tk.Button(self,
+                                               text='Finish Points',
+                                               command=lambda: finish_wall_points(triangulate_btn,
+                                                                                  finish_wall_points_btn))
             finish_wall_points_btn.grid(row=1, column=1)
 
 
