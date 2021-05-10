@@ -16,6 +16,7 @@ labels = []
 
 wall_points = []
 lines = []
+to_be_moved_point_index = -1
 
 
 def drag_start(event):
@@ -38,12 +39,10 @@ def draw_wall_points(event):
                                         x + point_radius, y + point_radius],
                                        outline='black', fill='red')
 
-    print(point)
-
     global wall_points
     # x = X-Coord
     # y = Y-Coord
-    # point = ID of point in canvas (used to delete and redraw)
+    # point is the ID of point in canvas (used to delete and redraw)
     wall_points.append((x, y, point))
     # canvas_points.append(point)
 
@@ -75,8 +74,8 @@ def finish_wall_points(triangulate_btn, finish_button):
 
     # Unbind drawing new points
     drawing_canvas.bind('<Button-1>', edit_wall_points)
-
-    return
+    drawing_canvas.bind('<B1-Motion>', edit_wall_points_drag_motion)
+    drawing_canvas.bind('<ButtonRelease-1>', edit_wall_points_released)
 
 
 def edit_wall_points(event):
@@ -100,14 +99,63 @@ def edit_wall_points(event):
             current_min_distance = current_distance
             point_index_of_min_distance = i
 
-    print('Current Min Distance')
-    print(current_min_distance)
+    if current_min_distance < 8:
+        # if click is in range of a button
+        global to_be_moved_point_index
+        to_be_moved_point_index = point_index_of_min_distance
+
+
+def edit_wall_points_drag_motion(event):
+    if to_be_moved_point_index == -1:
+        # if drag is without the click of a button before, drag does nothing
+        return
+
+    global wall_points, lines
+
+    x, y = event.x, event.y
+
+    # define the old point with its lines
+    p0 = wall_points[to_be_moved_point_index]
+    l0 = lines[to_be_moved_point_index - 1]
+    l1 = lines[to_be_moved_point_index]
+
+    # draw new point
+    new_p0_id = drawing_canvas.create_oval([x - point_radius, y - point_radius,
+                                            x + point_radius, y + point_radius],
+                                           outline='black', fill='red')
+    # save point as tuple to prepare saving in "wall_points"
+    new_p0 = (x, y, new_p0_id)
+
+    point_before_new_p0 = wall_points[to_be_moved_point_index - 1]
+    new_l0 = drawing_canvas.create_line([point_before_new_p0[0], point_before_new_p0[1],
+                                         new_p0[0], new_p0[1]], fill='black')
+
+    # modulo needed here in case last point in list is clicked and the index overflows
+    point_after_new_p0 = wall_points[(to_be_moved_point_index + 1) % len(wall_points)]
+    new_l1 = drawing_canvas.create_line([new_p0[0], new_p0[1],
+                                        point_after_new_p0[0], point_after_new_p0[1]], fill='black')
+
+    lines[to_be_moved_point_index - 1] = new_l0
+    lines[to_be_moved_point_index] = new_l1
+    wall_points[to_be_moved_point_index] = new_p0
+
+    # deleting point that has been clicked and its lines
+    drawing_canvas.delete(p0[2])
+    drawing_canvas.delete(l0)
+    drawing_canvas.delete(l1)
+
+
+def edit_wall_points_released(_):
+    # if Button-1 is released the click and drag indicator is set back to a default value
+    global to_be_moved_point_index
+    to_be_moved_point_index = -1
 
 
 def add_label(window=drawing_canvas, color="grey", width: int = 30, height: int = 30):
+    """ Function is pretty much deprecated """
     # Adding a label (here mostly squares) and to given canvas
 
-    # Squares' size is pixelbased because an empty image is used
+    # Squares' size is pixel based because an empty image is used
     i = tk.PhotoImage()
     label = tk.Label(window, image=i, width=width, height=height, bg=color)
 
@@ -165,7 +213,7 @@ class OwnFrame(tk.Frame):
             instructions = tk.Label(self, text="1\n2\n2\n3\n4\n5\n6\n7\n8\n9\n")
             instructions.grid(row=1, column=0, padx=10, pady=2)
 
-            add_sqr = tk.Button(self, text='Add Square (not used yet)', command=add_label)
+            add_sqr = tk.Button(self, text='Add Square (deprecated)', command=add_label)
             add_sqr.grid(row=0, column=1)
 
             triangulate_btn = tk.Button(self, text='Calculate Mesh', command=triangulate, state=tk.DISABLED)
