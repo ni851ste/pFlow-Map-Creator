@@ -18,6 +18,8 @@ wall_points = []
 lines = []
 to_be_moved_point_index = -1
 
+popup_open = False
+
 
 def drag_start(event):
     widget = event.widget
@@ -168,7 +170,43 @@ def add_label(window=drawing_canvas, color="grey", width: int = 30, height: int 
     labels.append(label)
 
 
-def triangulate(x_max=int(window_width),
+def start_mesh_config():
+
+    global popup_open
+
+    if popup_open:
+        return
+
+    popup_open = True
+
+    popup = tk.Toplevel()
+    popup.wm_title("Meshing")
+    popup.protocol("WM_DELETE_WINDOW", lambda: close_popup(popup))
+
+    selected = tk.StringVar()
+
+    tk.Label(popup, text="Select preferred meshing granularity.").pack()
+
+    r0 = tk.Radiobutton(popup, text="Coarse", value=0, variable=selected)
+    r1 = tk.Radiobutton(popup, text="Medium", value=1, variable=selected)
+    r2 = tk.Radiobutton(popup, text="Fine", value=2, variable=selected)
+
+    r0.pack(padx=5, pady=5)
+    r1.pack(padx=5, pady=5)
+    r2.pack(padx=5, pady=5)
+
+    mesh_btn = tk.Button(popup, text="tmp", command=lambda: triangulate(selected.get()))
+    mesh_btn.pack(padx=5, pady=5)
+
+
+def close_popup(window):
+    global popup_open
+    popup_open = False
+    window.destroy()
+
+
+def triangulate(granularity,
+                x_max=int(window_width),
                 y_max=int(window_height)):
     tri.calculate_mesh(x_max, y_max, wall_points, [])
 
@@ -216,7 +254,7 @@ class OwnFrame(tk.Frame):
             add_sqr = tk.Button(self, text='Add Square (deprecated)', command=add_label)
             add_sqr.grid(row=0, column=1)
 
-            triangulate_btn = tk.Button(self, text='Calculate Mesh', command=triangulate, state=tk.DISABLED)
+            triangulate_btn = tk.Button(self, text='Calculate Mesh', command=start_mesh_config, state=tk.DISABLED)
             triangulate_btn.grid(row=2, column=1)
 
             finish_wall_points_btn = tk.Button(self,
