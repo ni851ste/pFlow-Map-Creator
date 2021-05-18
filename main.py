@@ -132,7 +132,7 @@ def edit_wall_points_drag_motion(event):
     new_l0 = drawing_canvas.create_line([point_before_new_p0[0], point_before_new_p0[1],
                                          new_p0[0], new_p0[1]], fill='black')
 
-    # modulo needed here in case last point in list is clicked and the index overflows
+    # modulo needed here in case last point in list is clicked and the index (i + 1) overflows
     point_after_new_p0 = wall_points[(to_be_moved_point_index + 1) % len(wall_points)]
     new_l1 = drawing_canvas.create_line([new_p0[0], new_p0[1],
                                         point_after_new_p0[0], point_after_new_p0[1]], fill='black')
@@ -172,8 +172,8 @@ def add_label(window=drawing_canvas, color="grey", width: int = 30, height: int 
 
 def start_mesh_config():
 
+    # Make sure there is only one popup open
     global popup_open
-
     if popup_open:
         return
 
@@ -183,7 +183,7 @@ def start_mesh_config():
     popup.wm_title("Meshing")
     popup.protocol("WM_DELETE_WINDOW", lambda: close_popup(popup))
 
-    selected = tk.StringVar()
+    selected = tk.IntVar()
 
     tk.Label(popup, text="Select preferred meshing granularity.").pack()
 
@@ -200,15 +200,50 @@ def start_mesh_config():
 
 
 def close_popup(window):
+    """Custom popup on close function"""
     global popup_open
     popup_open = False
     window.destroy()
 
 
-def triangulate(granularity,
-                x_max=int(window_width),
-                y_max=int(window_height)):
-    tri.calculate_mesh(x_max, y_max, wall_points, [])
+def triangulate(granularity_level,
+                window_x_max=int(window_width),
+                window_y_max=int(window_height)):
+    """Function to start the meshing"""
+
+    # Start to calculate the granularity
+    # by finding the size of the polygon
+    poly_x_max = poly_y_max = 0
+    poly_x_min = poly_y_min = sys.maxsize
+
+    for point in wall_points:
+        x = point[0]
+        y = point[1]
+
+        poly_x_min = min(poly_x_min, x)
+        poly_y_min = min(poly_y_min, y)
+
+        poly_x_max = max(poly_x_max, x)
+        poly_y_max = max(poly_y_max, y)
+
+    #print("Min: " + str(poly_x_min) + " " + str(poly_y_min))
+    #print("Max: " + str(poly_x_max) + " " + str(poly_y_max))
+
+    poly_width = poly_x_max - poly_x_min
+    poly_height = poly_y_max - poly_y_min
+
+    granularity = 0
+    if granularity_level == 0:
+        # Coarse
+        granularity = ((poly_width / 0.3) + (poly_height / 0.3)) / 2
+    elif granularity_level == 1:
+        # Normal
+        granularity = ((poly_width / 3) + (poly_height / 3)) / 2
+    elif granularity_level == 2:
+        # Fine
+        granularity = ((poly_width / 30) + (poly_height / 30)) / 2
+
+    tri.calculate_mesh(granularity, window_x_max, window_y_max, wall_points, [])
 
 
 class MainWindow(tk.Tk):

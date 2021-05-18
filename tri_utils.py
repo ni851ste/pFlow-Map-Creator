@@ -1,12 +1,12 @@
 import pygimli as pg
 import pygimli.meshtools as mt
 
-granularity = 100     # for fine grain 0.01
-segment_gran = int(1 / (granularity * 10))
+granularity_old = 100     # for fine grain 0.01
+segment_gran = int(1 / (granularity_old * 10))
 
 
 def main():
-    w = mt.createWorld(start=[-5, -5], end=[5, 5], area=granularity)
+    w = mt.createWorld(start=[-5, -5], end=[5, 5], area=granularity_old)
     # TODO what does "leftDirection" mean?
     l1 = mt.createLine(start=[2, 2], end=[1, 2], leftDirection=False)
     # l2 = mt.createLine(start=[2, 2], end=[2, 2], leftDirection=False)
@@ -39,11 +39,11 @@ if __name__ == "__main__":
     main()
 
 
-def calculate_mesh(x_max, y_max, points, obstacles):
+def calculate_mesh(granularity, x_max, y_max, points, obstacles):
 
-    w = mt.createWorld(start=[0, 0], end=[x_max, y_max], area=granularity)
+    w = mt.createWorld(start=[0, 0], end=[x_max, y_max], area=int(granularity))
 
-    drawn_walls = draw_polygon_by_polygon(points, y_max)
+    drawn_walls = draw_polygon_by_polygon(points, y_max, int(granularity))
 
     # Corner Points get drawn as a hole to only generate mesh over the custom polygon
     graph_corner_points = [(0, 0), (0, y_max), (x_max, y_max), (x_max, 0)]
@@ -55,7 +55,7 @@ def calculate_mesh(x_max, y_max, points, obstacles):
     pg.wait()
 
 
-def draw_polygon_by_polygon(points, y_max):
+def draw_polygon_by_polygon(points, y_max, granularity, hole=False):
 
     corrected_points = []
     # Points are getting corrected since the graphs origin is one time
@@ -64,7 +64,7 @@ def draw_polygon_by_polygon(points, y_max):
         corrected_points.append((point[0], y_max - point[1]))
 
     # TODO tweak area parameter if needed
-    p1 = mt.createPolygon(corrected_points, isClosed=True, isHole=False, area=float(granularity))
+    p1 = mt.createPolygon(corrected_points, isClosed=True, isHole=hole, area=float(granularity))
 
     return p1
 
