@@ -18,6 +18,10 @@ wall_points = []
 lines = []
 to_be_moved_point_index = -1
 
+hole_poly_number = -1
+hole_polys = []
+hole_poly_lines = []
+
 popup_open = False
 
 
@@ -37,19 +41,30 @@ def drag_motion(event):
 def draw_wall_points(event):
     x, y = event.x, event.y
 
+    current_color = 'red'
+    if hole_poly_number >= 0:
+        current_color = 'blue'
+
     point = drawing_canvas.create_oval([x - point_radius, y - point_radius,
                                         x + point_radius, y + point_radius],
-                                       outline='black', fill='red')
+                                       outline='black', fill=current_color)
 
-    global wall_points
-    # x = X-Coord
-    # y = Y-Coord
-    # point is the ID of point in canvas (used to delete and redraw)
-    wall_points.append((x, y, point))
-    # canvas_points.append(point)
+    current_point_list = None
 
-    if len(wall_points) > 1:
-        to_be_drawn_points = wall_points[-2:]
+    if hole_poly_number >= 0:
+        global hole_polys
+        hole_polys[hole_poly_number].append((x, y, point))
+        current_point_list = hole_polys[hole_poly_number]
+    else:
+        global wall_points
+        # x = X-Coord
+        # y = Y-Coord
+        # point is the ID of point in canvas (used to delete and redraw)
+        wall_points.append((x, y, point))
+        current_point_list = wall_points
+
+    if len(current_point_list) > 1:
+        to_be_drawn_points = current_point_list[-2:]
         p1 = to_be_drawn_points[0]
         p2 = to_be_drawn_points[1]
 
@@ -63,12 +78,21 @@ def finish_wall_points(triangulate_btn, finish_button):
         print('Cant finish, since not enough points have been placed.')
         return
 
-    # Draw the last line between first and last given point
-    p1 = wall_points[-1]
-    p2 = wall_points[0]
-    line = drawing_canvas.create_line([p1[0], p1[1], p2[0], p2[1]], fill='black')
-    global lines
-    lines.append(line)
+    if hole_poly_number < 0:
+        # Draw the last line between first and last given point
+        p1 = wall_points[-1]
+        p2 = wall_points[0]
+        line = drawing_canvas.create_line([p1[0], p1[1], p2[0], p2[1]], fill='black')
+        global lines
+        lines.append(line)
+    else:
+        current_wall_points = hole_polys[hole_poly_number]
+
+        p1 = current_wall_points[-1]
+        p2 = current_wall_points[0]
+        line = drawing_canvas.create_line([p1[0], p1[1], p2[0], p2[1]], fill='black')
+        global hole_poly_lines
+        hole_poly_lines[hole_poly_number].append(line)
 
     # Apply new state to buttons
     triangulate_btn.config(state='normal')
@@ -153,21 +177,25 @@ def edit_wall_points_released(_):
     to_be_moved_point_index = -1
 
 
-def add_label(window=drawing_canvas, color="grey", width: int = 30, height: int = 30):
-    """ Function is pretty much deprecated """
-    # Adding a label (here mostly squares) and to given canvas
+def draw_additional_polygons(triangulate_btn, finish_button):
+    global drawing_canvas, hole_poly_number
 
-    # Squares' size is pixel based because an empty image is used
-    i = tk.PhotoImage()
-    label = tk.Label(window, image=i, width=width, height=height, bg=color)
+    drawing_canvas.unbind('<Button-1>')
+    drawing_canvas.unbind('<B1-Motion>')
+    drawing_canvas.unbind('<ButtonRelease-1>')
 
-    label.place(x=random.randint(0, 600), y=random.randint(0, 400))
+    drawing_canvas.bind('<Button-1>', draw_wall_points)
 
-    label.bind('<Button-1>', drag_start)
-    label.bind('<B1-Motion>', drag_motion)
+    global hole_polys, hole_poly_lines
+    hole_poly_number += 1
+    hole_polys.append([])
+    hole_polys[hole_poly_number] = []
 
-    global labels
-    labels.append(label)
+    hole_poly_lines.append([])
+    hole_poly_lines[hole_poly_number] = []
+
+    triangulate_btn.config(state='disabled')
+    finish_button.config(state='normal')
 
 
 def start_mesh_config():
@@ -195,18 +223,19 @@ def start_mesh_config():
     r1.pack(padx=5, pady=5)
     r2.pack(padx=5, pady=5)
 
-    mesh_btn = tk.Button(popup, text="tmp", command=lambda: triangulate(selected.get()))
+    mesh_btn = tk.Button(popup, text="Generate Mesh", command=lambda: triangulate(selected.get(), popup))
     mesh_btn.pack(padx=5, pady=5)
 
 
 def close_popup(window):
-    """Custom popup on close function"""
+    """Custom close function for mesh config popup"""
     global popup_open
     popup_open = False
     window.destroy()
 
 
 def triangulate(granularity_level,
+                config_popup,
                 window_x_max=int(window_width),
                 window_y_max=int(window_height)):
     """Function to start the meshing"""
@@ -226,12 +255,10 @@ def triangulate(granularity_level,
         poly_x_max = max(poly_x_max, x)
         poly_y_max = max(poly_y_max, y)
 
-    #print("Min: " + str(poly_x_min) + " " + str(poly_y_min))
-    #print("Max: " + str(poly_x_max) + " " + str(poly_y_max))
-
     poly_width = poly_x_max - poly_x_min
     poly_height = poly_y_max - poly_y_min
 
+    # Configuration of granularity level
     granularity = 0
     if granularity_level == 0:
         # Coarse
@@ -243,7 +270,9 @@ def triangulate(granularity_level,
         # Fine
         granularity = ((poly_width / 30) + (poly_height / 30)) / 2
 
-    tri.calculate_mesh(granularity, window_x_max, window_y_max, wall_points, [])
+    tri.calculate_mesh(granularity, window_x_max, window_y_max, wall_points, hole_polys)
+
+    close_popup(config_popup)
 
 
 class MainWindow(tk.Tk):
@@ -286,17 +315,18 @@ class OwnFrame(tk.Frame):
             instructions = tk.Label(self, text="1\n2\n2\n3\n4\n5\n6\n7\n8\n9\n")
             instructions.grid(row=1, column=0, padx=10, pady=2)
 
-            add_sqr = tk.Button(self, text='Add Square (deprecated)', command=add_label)
-            add_sqr.grid(row=0, column=1)
-
             triangulate_btn = tk.Button(self, text='Calculate Mesh', command=start_mesh_config, state=tk.DISABLED)
-            triangulate_btn.grid(row=2, column=1)
+            triangulate_btn.grid(row=1, column=1)
 
             finish_wall_points_btn = tk.Button(self,
                                                text='Finish Points',
                                                command=lambda: finish_wall_points(triangulate_btn,
                                                                                   finish_wall_points_btn))
-            finish_wall_points_btn.grid(row=1, column=1)
+            finish_wall_points_btn.grid(row=0, column=1)
+
+            add_sqr = tk.Button(self, text='Draw holes', command=lambda: draw_additional_polygons(triangulate_btn,
+                                                                                                   finish_wall_points_btn))
+            add_sqr.grid(row=2, column=1)
 
 
 class OwnCanvas(tk.Canvas):

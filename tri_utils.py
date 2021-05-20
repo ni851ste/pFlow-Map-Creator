@@ -39,17 +39,22 @@ if __name__ == "__main__":
     main()
 
 
-def calculate_mesh(granularity, x_max, y_max, points, obstacles):
+def calculate_mesh(granularity, x_max, y_max, points, holes):
 
     w = mt.createWorld(start=[0, 0], end=[x_max, y_max], area=int(granularity))
 
-    drawn_walls = draw_polygon_by_polygon(points, y_max, int(granularity))
-
     # Corner Points get drawn as a hole to only generate mesh over the custom polygon
     graph_corner_points = [(0, 0), (0, y_max), (x_max, y_max), (x_max, 0)]
-    drawn_graph_corners = mt.createPolygon(graph_corner_points, isClosed=True, isHole=True, )
+    drawn_graph_corners = mt.createPolygon(graph_corner_points, isClosed=True, isHole=True)
+
+    drawn_walls = draw_polygon_by_polygon(points, y_max, int(granularity))
 
     to_be_meshed = [w, drawn_graph_corners, drawn_walls]
+
+    for hole in holes:
+        drawn_hole = draw_polygon_by_polygon(hole, y_max, int(granularity), hole=True)
+        to_be_meshed.append(drawn_hole)
+
     mesh = mt.createMesh(to_be_meshed)
     ax, _ = pg.show(mesh)
     pg.wait()
