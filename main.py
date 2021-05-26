@@ -1,7 +1,6 @@
 import math
 import sys
 import tkinter as tk
-import random
 import tri_utils as tri
 
 window_width = "1150"
