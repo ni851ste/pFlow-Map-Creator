@@ -1,5 +1,6 @@
 import pygimli as pg
 import pygimli.meshtools as mt
+import os
 
 granularity_old = 100     # for fine grain 0.01
 segment_gran = int(1 / (granularity_old * 10))
@@ -15,28 +16,50 @@ def main():
 
     mesh = mt.createMesh([w, l1, p1, ])
     print(str(mesh))
+    #print(str(mesh.cells()))
     # mt.poly()
+    #print(mesh.cells())
+
+    #ax, _ = pg.show(mesh)
+    #pg.wait()
+
+    # create tmp and .poly export
+    path = str(os.getcwd()) + "/tmp"
+    if not os.path.exists(path):
+        os.mkdir(path)
+
+    mt.exportPLC(mesh, "tmp/tmp_export.poly")
+
+    f = open("tmp/tmp_export.poly", "r")
+
+    first_info_line = f.readline()
+    no_of_nodes = int(first_info_line.split("\t")[0])
+    print(str(no_of_nodes) + " nodes found.")
+
+    nodes = []
+
+    for i in range(no_of_nodes):
+        read_line = f.readline()
+        split_line = read_line.split("\t")
+
+        nodes.append((float(split_line[1]), float(split_line[2])))
+
+    second_info_line = f.readline()
+    no_of_boundaries = int(second_info_line.split("\t")[0])
+
+    print(str(no_of_boundaries) + " boundaries found")
+
+    boundaries = []
+    for i in range(no_of_boundaries):
+        read_line = f.readline()
+        split_line = read_line.split("\t")
+
+        boundaries.append((int(split_line[1]), int(split_line[2])))
+
+    export(nodes, boundaries)
 
 
-    # for cell in mesh.cells():
-    #    print(cell)
 
-    print(str(mesh.cells()))
-
-    ax, _ = pg.show(mesh)
-    # ax, _ = pg.show([w, l1, p1, ], ax=ax, fillRegion=False)
-
-    mt.exportPLC(mesh, "test.plc")
-    mesh.exportAsTetgenPolyFile("polyFile")
-
-    # mt.exportSTL(w, "test.stl")
-    # mt.exportFenicsHDF5Mesh(w, "test.hdf5")
-
-    pg.wait()
-
-
-if __name__ == "__main__":
-    main()
 
 
 def calculate_mesh(granularity, x_max, y_max, points, holes):
@@ -102,4 +125,48 @@ def draw_line(p1, p2, y_max):
     return line
 
 
+def export(nodes, boundaries):
+    # first boundary
+    p0 = boundaries[0][0]
+    p1 = boundaries[0][1]
+    p2 = None
 
+    node_set = {p0, p1}
+
+    # ToDo needs to be 51
+    found_triangles = 0
+
+    for i in range(1, len(boundaries)):
+        # find 2nd boundary
+        bound = boundaries[i]
+
+        b0 = bound[0]
+        b1 = bound[1]
+
+        if b0 in node_set or b1 in node_set:
+            # found 2nd boundary
+            print("i: " + str(i))
+
+            if b0 in node_set:
+                p2 = b1
+            elif b1 in node_set:
+                p2 = b0
+
+            node_set.add(p2)
+            # print(str(p0) + " " + str(p1) + " " + str(p2))
+
+            for j in range(i + 1, len(boundaries)):
+                # find 3rd boundary
+                last_bound = boundaries[j]
+                lb0 = last_bound[0]
+                lb1 = last_bound[1]
+
+                if lb0 in node_set and lb1 in node_set:
+                    # found 3rd boundary
+                    print("j: " + str(j))
+                    found_triangles += 1
+                    return
+
+
+if __name__ == "__main__":
+    main()
