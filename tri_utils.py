@@ -2,7 +2,7 @@ import pygimli as pg
 import pygimli.meshtools as mt
 import os
 
-granularity_old = 100     # for fine grain 0.01
+granularity_old = 100  # for fine grain 0.01
 segment_gran = int(1 / (granularity_old * 10))
 
 
@@ -16,9 +16,9 @@ def main():
 
     mesh = mt.createMesh([w, l1, p1, ])
     print(str(mesh))
-    #print(str(mesh.cells()))
+    # print(str(mesh.cells()))
     # mt.poly()
-    #print(mesh.cells())
+    # print(mesh.cells())
 
     #ax, _ = pg.show(mesh)
     #pg.wait()
@@ -56,14 +56,10 @@ def main():
 
         boundaries.append((int(split_line[1]), int(split_line[2])))
 
-    export(nodes, boundaries)
-
-
-
+    export(mesh, boundaries)
 
 
 def calculate_mesh(granularity, x_max, y_max, points, holes):
-
     w = mt.createWorld(start=[0, 0], end=[x_max, y_max], area=int(granularity))
 
     # Corner Points get drawn as a hole to only generate mesh over the custom polygon
@@ -84,7 +80,6 @@ def calculate_mesh(granularity, x_max, y_max, points, holes):
 
 
 def draw_polygon_by_polygon(points, y_max, granularity, hole=False):
-
     corrected_points = []
     # Points are getting corrected since the graphs origin is one time
     # at top left and needs to be adjusted to bottom left
@@ -125,47 +120,89 @@ def draw_line(p1, p2, y_max):
     return line
 
 
-def export(nodes, boundaries):
+def export(mesh, boundaries):
     # first boundary
-    p0 = boundaries[0][0]
-    p1 = boundaries[0][1]
-    p2 = None
 
-    node_set = {p0, p1}
+    found_triangles = []
+    i = 0
+    second_loop = False
 
-    # ToDo needs to be 51
-    found_triangles = 0
+    while i < len(boundaries) - 2:
+        try:
+            p0 = boundaries[i][0]
+            p1 = boundaries[i][1]
+            p2 = None
 
-    for i in range(1, len(boundaries)):
-        # find 2nd boundary
-        bound = boundaries[i]
+            node_set = {p0, p1}
 
-        b0 = bound[0]
-        b1 = bound[1]
+            j_range = None
+            if second_loop:
+                j_range = range(i + 2, len(boundaries) - 1)
+            else:
+                j_range = range(i + 1, len(boundaries) - 1)
 
-        if b0 in node_set or b1 in node_set:
-            # found 2nd boundary
-            print("i: " + str(i))
+            for j in j_range:
+                # find 2nd boundary
 
-            if b0 in node_set:
-                p2 = b1
-            elif b1 in node_set:
-                p2 = b0
+                bound = boundaries[j]
 
-            node_set.add(p2)
-            # print(str(p0) + " " + str(p1) + " " + str(p2))
+                b0 = bound[0]
+                b1 = bound[1]
 
-            for j in range(i + 1, len(boundaries)):
-                # find 3rd boundary
-                last_bound = boundaries[j]
-                lb0 = last_bound[0]
-                lb1 = last_bound[1]
+                if b0 in node_set or b1 in node_set:
+                    # found 2nd boundary
+                    #print("j: " + str(j))
 
-                if lb0 in node_set and lb1 in node_set:
-                    # found 3rd boundary
-                    print("j: " + str(j))
-                    found_triangles += 1
-                    return
+                    if b0 in node_set:
+                        p2 = b1
+                    elif b1 in node_set:
+                        p2 = b0
+
+                    node_set.add(p2)
+
+                    if node_set in found_triangles:
+                        # searching for a triangle that has already been found
+                        # continue to move second pointer down the list
+                        node_set.remove(p2)
+                        continue
+                    # print(str(p0) + " " + str(p1) + " " + str(p2))
+
+                    for k in range(j + 1, len(boundaries)):
+                        # find 3rd boundary
+                        last_bound = boundaries[k]
+                        lb0 = last_bound[0]
+                        lb1 = last_bound[1]
+
+                        if lb0 in node_set and lb1 in node_set:
+                            # found 3rd boundary
+                            #print("k: " + str(k))
+                            if node_set not in found_triangles:
+                                found_triangles.append(node_set)
+                            raise LoopDone
+
+                    node_set.remove(p2)
+                    p2 = None
+            #i = i + 1
+            second_loop = True
+            raise LoopDone
+        except LoopDone:
+            if second_loop:
+                i = i + 1
+                #print("i: " + str(i))
+                second_loop = False
+            else:
+                second_loop = True
+
+            #continue
+
+
+
+    print(str(len(found_triangles)) + " cells have been found.")
+    #ax, _ = pg.show(mesh)
+    #pg.wait()
+
+
+class LoopDone(Exception): pass
 
 
 if __name__ == "__main__":
