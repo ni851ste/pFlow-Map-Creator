@@ -1,3 +1,5 @@
+import time
+
 import pygimli as pg
 import pygimli.meshtools as mt
 import os
@@ -7,21 +9,19 @@ segment_gran = int(1 / (granularity_old * 10))
 
 
 def main():
-    w = mt.createWorld(start=[-5, -5], end=[5, 5], area=granularity_old)
+    area = 0.01
+    w = mt.createWorld(start=[-5, -5], end=[5, 5], area=area)
     # TODO what does "leftDirection" mean?
     l1 = mt.createLine(start=[2, 2], end=[1, 2], leftDirection=False)
     # l2 = mt.createLine(start=[2, 2], end=[2, 2], leftDirection=False)
 
-    p1 = mt.createPolygon([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]], isClosed=True, marker=3)
+    p1 = mt.createPolygon([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]], isClosed=True, marker=3, area=area)
 
     mesh = mt.createMesh([w, l1, p1, ])
     print(str(mesh))
-    # print(str(mesh.cells()))
-    # mt.poly()
-    # print(mesh.cells())
 
-    #ax, _ = pg.show(mesh)
-    #pg.wait()
+    ax, _ = pg.show(mesh)
+    pg.wait()
 
     # create tmp and .poly export
     path = str(os.getcwd()) + "/tmp"
@@ -36,8 +36,8 @@ def main():
     no_of_nodes = int(first_info_line.split("\t")[0])
     print(str(no_of_nodes) + " nodes found.")
 
+    # read nodes from file
     nodes = []
-
     for i in range(no_of_nodes):
         read_line = f.readline()
         split_line = read_line.split("\t")
@@ -46,9 +46,9 @@ def main():
 
     second_info_line = f.readline()
     no_of_boundaries = int(second_info_line.split("\t")[0])
-
     print(str(no_of_boundaries) + " boundaries found")
 
+    # read boundaries from text
     boundaries = []
     for i in range(no_of_boundaries):
         read_line = f.readline()
@@ -56,7 +56,7 @@ def main():
 
         boundaries.append((int(split_line[1]), int(split_line[2])))
 
-    export(mesh, boundaries)
+    export(nodes, boundaries)
 
 
 def calculate_mesh(granularity, x_max, y_max, points, holes):
@@ -86,7 +86,6 @@ def draw_polygon_by_polygon(points, y_max, granularity, hole=False):
     for point in points:
         corrected_points.append((point[0], y_max - point[1]))
 
-    # TODO tweak area parameter if needed
     p1 = mt.createPolygon(corrected_points, isClosed=True, isHole=hole, area=float(granularity))
 
     return p1
@@ -120,14 +119,18 @@ def draw_line(p1, p2, y_max):
     return line
 
 
-def export(mesh, boundaries):
+def export(nodes, boundaries):
     # first boundary
 
     found_triangles = []
     i = 0
     second_loop = False
 
+    print(str(time.time()))
+
     while i < len(boundaries) - 2:
+        """First pointer is a while loop, because it needs to run two times per index. Increment every other time
+        is done with the "second_loop" flag."""
         try:
             p0 = boundaries[i][0]
             p1 = boundaries[i][1]
@@ -145,7 +148,6 @@ def export(mesh, boundaries):
                 # find 2nd boundary
 
                 bound = boundaries[j]
-
                 b0 = bound[0]
                 b1 = bound[1]
 
@@ -175,14 +177,12 @@ def export(mesh, boundaries):
 
                         if lb0 in node_set and lb1 in node_set:
                             # found 3rd boundary
-                            #print("k: " + str(k))
                             if node_set not in found_triangles:
                                 found_triangles.append(node_set)
                             raise LoopDone
 
                     node_set.remove(p2)
                     p2 = None
-            #i = i + 1
             second_loop = True
             raise LoopDone
         except LoopDone:
@@ -192,7 +192,11 @@ def export(mesh, boundaries):
                 second_loop = False
             else:
                 second_loop = True
-
+        except KeyboardInterrupt:
+            # For performance testing purposes
+            print("Status: " + str(i / len(boundaries)) + "%")
+            print("Status: " + str(i))
+            exit(0)
             #continue
 
 
@@ -202,7 +206,9 @@ def export(mesh, boundaries):
     #pg.wait()
 
 
-class LoopDone(Exception): pass
+class LoopDone(Exception):
+    """Custom Exception used as jump flag inside the three for-loops."""
+    pass
 
 
 if __name__ == "__main__":
