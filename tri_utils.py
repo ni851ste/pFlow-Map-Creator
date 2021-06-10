@@ -18,45 +18,8 @@ def main():
     p1 = mt.createPolygon([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]], isClosed=True, marker=3, area=area)
 
     mesh = mt.createMesh([w, l1, p1, ])
-    print(str(mesh))
 
-    #ax, _ = pg.show(mesh)
-    #pg.wait()
-
-    # create tmp and .poly export
-    path = str(os.getcwd()) + "/tmp"
-    if not os.path.exists(path):
-        os.mkdir(path)
-
-    mt.exportPLC(mesh, "tmp/tmp_export.poly")
-
-    f = open("tmp/tmp_export.poly", "r")
-
-    first_info_line = f.readline()
-    no_of_nodes = int(first_info_line.split("\t")[0])
-    print(str(no_of_nodes) + " nodes found.")
-
-    # read nodes from file
-    nodes = []
-    for i in range(no_of_nodes):
-        read_line = f.readline()
-        split_line = read_line.split("\t")
-
-        nodes.append((float(split_line[1]), float(split_line[2])))
-
-    second_info_line = f.readline()
-    no_of_boundaries = int(second_info_line.split("\t")[0])
-    print(str(no_of_boundaries) + " boundaries found")
-
-    # read boundaries from text
-    boundaries = []
-    for i in range(no_of_boundaries):
-        read_line = f.readline()
-        split_line = read_line.split("\t")
-
-        boundaries.append((int(split_line[1]), int(split_line[2])))
-
-    export(nodes, boundaries)
+    export_mesh(mesh)
 
 
 def calculate_mesh(granularity, x_max, y_max, points, holes):
@@ -75,9 +38,10 @@ def calculate_mesh(granularity, x_max, y_max, points, holes):
         to_be_meshed.append(drawn_hole)
 
     mesh = mt.createMesh(to_be_meshed)
-    print(str(mesh))
     ax, _ = pg.show(mesh)
     pg.wait()
+
+    return mesh
 
 
 def draw_polygon_by_polygon(points, y_max, granularity, hole=False):
@@ -120,7 +84,48 @@ def draw_line(p1, p2, y_max):
     return line
 
 
-def export(nodes, boundaries):
+def export_mesh(mesh):
+    print(str(mesh))
+
+    # ax, _ = pg.show(mesh)
+    # pg.wait()
+
+    # create /tmp and .poly export
+    path = str(os.getcwd()) + "/tmp"
+    if not os.path.exists(path):
+        os.mkdir(path)
+    mt.exportPLC(mesh, "tmp/tmp_export.poly")
+
+    f = open("tmp/tmp_export.poly", "r")
+
+    first_info_line = f.readline()
+    no_of_nodes = int(first_info_line.split("\t")[0])
+    #print(str(no_of_nodes) + " nodes found.")
+
+    # read nodes from file
+    nodes = []
+    for i in range(no_of_nodes):
+        read_line = f.readline()
+        split_line = read_line.split("\t")
+
+        nodes.append((float(split_line[1]), float(split_line[2])))
+
+    second_info_line = f.readline()
+    no_of_boundaries = int(second_info_line.split("\t")[0])
+    #print(str(no_of_boundaries) + " boundaries found")
+
+    # read boundaries from text
+    boundaries = []
+    for i in range(no_of_boundaries):
+        read_line = f.readline()
+        split_line = read_line.split("\t")
+
+        boundaries.append((int(split_line[1]), int(split_line[2])))
+
+    export_final_version(nodes, boundaries)
+
+
+def export_final_version(nodes, boundaries):
     # first boundary
 
     found_triangles = []
@@ -128,16 +133,17 @@ def export(nodes, boundaries):
     second_loop = False
 
     t = time.localtime()
-    current_time = time.strftime("%H:%M  %S", t)
+    current_time = time.strftime("%H:%M", t)
     print("Start: " + current_time)
 
     while i < len(boundaries) - 2:
         """First pointer is a while loop, because it needs to run two times per index. Increment every other time
         is done with the "second_loop" flag."""
 
-        if 0 == i % int(len(boundaries) / 99) and not second_loop:
-            print("", end="\r")
-            print(str(i / int(len(boundaries) / 99)) + "%", end="")
+        # Loading progress is broken when there is a small and coarse mesh
+        #if 0 == i % int(len(boundaries) / 99) and not second_loop:
+        #    print("", end="\r")
+        #    print(str(i / int(len(boundaries) / 99)) + "%", end="")
 
         try:
             p0 = boundaries[i][0]
@@ -146,7 +152,6 @@ def export(nodes, boundaries):
 
             node_set = {p0, p1}
 
-            j_range = None
             if second_loop:
                 j_range = range(i + 2, len(boundaries) - 1)
             else:
@@ -208,12 +213,64 @@ def export(nodes, boundaries):
             #continue
 
     t = time.localtime()
-    current_time = time.strftime("%H:%M  %S", t)
-    print("End: " + current_time)
+    current_time = time.strftime("%H:%M", t)
+    print("\nEnd: " + current_time)
 
     print(str(len(found_triangles)) + " cells have been found.")
     #ax, _ = pg.show(mesh)
     #pg.wait()
+    save_export_to_file(nodes, found_triangles)
+
+
+def save_export_to_file(nodes, found_triangles):
+    """Method to parse export data into readable structure."""
+    export_string = ""
+
+    # number of nodes
+    export_string += str(len(nodes)) + "\n"
+
+    i = -1
+    for node in nodes:
+        i += 1
+        node = nodes[i]
+        export_string += str(i) + "\t" + str(node[0]) + "\t" + str(node[1]) + "\n"
+
+    # number of triangles
+    export_string += str(len(found_triangles)) + "\n"
+
+    i = -1
+    for triangle in found_triangles:
+        i += 1
+        # Get the node ids of the triangle corners
+        e1 = triangle.pop()
+        e2 = triangle.pop()
+        e3 = triangle.pop()
+
+        # Getting the coordinates of the corners
+        e1_coords = nodes[e1]
+        e2_coords = nodes[e2]
+        e3_coords = nodes[e3]
+
+        # calculating vectors of e2 and e3 from e1
+        e2x = e2_coords[0] - e1_coords[0]
+        e2y = e2_coords[1] - e1_coords[1]
+        e3x = e3_coords[0] - e1_coords[0]
+        e3y = e3_coords[1] - e1_coords[1]
+
+        # calculating cross product
+        cp = (e2x * e3y) - (e3x * e2y)
+
+        export_string += str(i) + "\t" + str(e1) + "\t"
+        if cp > 0:
+            export_string += str(e2) + "\t"
+            export_string += str(e3) + "\n"
+        else:
+            export_string += str(e3) + "\t"
+            export_string += str(e2) + "\n"
+
+    with open("export.nik", "w") as text_file:
+        print(export_string, file=text_file)
+    print(export_string)
 
 
 class LoopDone(Exception):

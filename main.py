@@ -21,6 +21,7 @@ hole_poly_number = -1
 hole_polys = []
 hole_poly_lines = []
 
+mesh = None
 popup_open = False
 
 
@@ -270,8 +271,16 @@ def triangulate(granularity_level,
         granularity = ((poly_width / 30) + (poly_height / 30)) / 2
 
     close_popup(config_popup)
-    tri.calculate_mesh(granularity, window_x_max, window_y_max, wall_points, hole_polys)
+    global mesh
+    mesh = tri.calculate_mesh(granularity, window_x_max, window_y_max, wall_points, hole_polys)
 
+
+def start_export():
+    if mesh is None:
+        print("No mesh generated yet. Create a mesh and then try again.")
+        return
+
+    tri.export_mesh(mesh)
 
 
 class MainWindow(tk.Tk):
@@ -281,7 +290,7 @@ class MainWindow(tk.Tk):
         menu_bar = tk.Menu(self)
 
         file_menu = tk.Menu(menu_bar)
-        file_menu.add_command(label="Export")
+        file_menu.add_command(label="Export", command=start_export)
 
         menu_bar.add_cascade(label="File", menu=file_menu)
 

@@ -132,3 +132,5 @@ dmypy.json
 # poly and plc
 *.poly
 *.plc
+
+*.nik
