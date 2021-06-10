@@ -269,15 +269,23 @@ def triangulate(granularity_level,
         # Fine
         granularity = ((poly_width / 30) + (poly_height / 30)) / 2
 
+    close_popup(config_popup)
     tri.calculate_mesh(granularity, window_x_max, window_y_max, wall_points, hole_polys)
 
-    close_popup(config_popup)
 
 
 class MainWindow(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.config(background="#BBBBBB")
+
+        menu_bar = tk.Menu(self)
+
+        file_menu = tk.Menu(menu_bar)
+        file_menu.add_command(label="Export")
+
+        menu_bar.add_cascade(label="File", menu=file_menu)
+
+        self.config(background="#BBBBBB", menu=menu_bar)
         self.geometry("{0}x{1}".format(window_width, window_height))
 
         self.leftFrame = OwnFrame(self, True)

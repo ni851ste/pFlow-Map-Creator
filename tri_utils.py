@@ -20,8 +20,8 @@ def main():
     mesh = mt.createMesh([w, l1, p1, ])
     print(str(mesh))
 
-    ax, _ = pg.show(mesh)
-    pg.wait()
+    #ax, _ = pg.show(mesh)
+    #pg.wait()
 
     # create tmp and .poly export
     path = str(os.getcwd()) + "/tmp"
@@ -75,6 +75,7 @@ def calculate_mesh(granularity, x_max, y_max, points, holes):
         to_be_meshed.append(drawn_hole)
 
     mesh = mt.createMesh(to_be_meshed)
+    print(str(mesh))
     ax, _ = pg.show(mesh)
     pg.wait()
 
@@ -126,11 +127,18 @@ def export(nodes, boundaries):
     i = 0
     second_loop = False
 
-    print(str(time.time()))
+    t = time.localtime()
+    current_time = time.strftime("%H:%M  %S", t)
+    print("Start: " + current_time)
 
     while i < len(boundaries) - 2:
         """First pointer is a while loop, because it needs to run two times per index. Increment every other time
         is done with the "second_loop" flag."""
+
+        if 0 == i % int(len(boundaries) / 99) and not second_loop:
+            print("", end="\r")
+            print(str(i / int(len(boundaries) / 99)) + "%", end="")
+
         try:
             p0 = boundaries[i][0]
             p1 = boundaries[i][1]
@@ -199,7 +207,9 @@ def export(nodes, boundaries):
             exit(0)
             #continue
 
-
+    t = time.localtime()
+    current_time = time.strftime("%H:%M  %S", t)
+    print("End: " + current_time)
 
     print(str(len(found_triangles)) + " cells have been found.")
     #ax, _ = pg.show(mesh)
