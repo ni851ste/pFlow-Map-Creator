@@ -16,8 +16,10 @@ labels = []
 wall_points = []
 lines = []
 to_be_moved_point_index = -1
+# First No. of hole poly, second No. of point in poly
+to_be_moved_hole_index = (-1, -1)
 
-hole_poly_number = -1
+hole_poly_count = -1
 hole_polys = []
 hole_poly_lines = []
 
@@ -42,7 +44,7 @@ def draw_wall_points(event):
     x, y = event.x, event.y
 
     current_color = 'red'
-    if hole_poly_number >= 0:
+    if hole_poly_count >= 0:
         current_color = 'blue'
 
     point = drawing_canvas.create_oval([x - point_radius, y - point_radius,
@@ -51,10 +53,10 @@ def draw_wall_points(event):
 
     current_point_list = None
 
-    if hole_poly_number >= 0:
+    if hole_poly_count >= 0:
         global hole_polys
-        hole_polys[hole_poly_number].append((x, y, point))
-        current_point_list = hole_polys[hole_poly_number]
+        hole_polys[hole_poly_count].append((x, y, point))
+        current_point_list = hole_polys[hole_poly_count]
     else:
         global wall_points
         # x = X-Coord
@@ -69,16 +71,22 @@ def draw_wall_points(event):
         p2 = to_be_drawn_points[1]
 
         line = drawing_canvas.create_line([p1[0], p1[1], p2[0], p2[1]], fill='black')
-        global lines
-        lines.append(line)
+
+        if hole_poly_count >= 0:
+            global hole_poly_lines
+            hole_poly_lines[hole_poly_count].append(line)
+        else:
+            global lines
+            lines.append(line)
 
 
 def finish_wall_points(triangulate_btn, finish_button):
+    # TODO can finish a 2 point hole, do for hole as well
     if len(wall_points) < 3:
         print('Cant finish, since not enough points have been placed.')
         return
 
-    if hole_poly_number < 0:
+    if hole_poly_count < 0:
         # Draw the last line between first and last given point
         p1 = wall_points[-1]
         p2 = wall_points[0]
@@ -86,13 +94,13 @@ def finish_wall_points(triangulate_btn, finish_button):
         global lines
         lines.append(line)
     else:
-        current_wall_points = hole_polys[hole_poly_number]
+        current_wall_points = hole_polys[hole_poly_count]
 
         p1 = current_wall_points[-1]
         p2 = current_wall_points[0]
         line = drawing_canvas.create_line([p1[0], p1[1], p2[0], p2[1]], fill='black')
         global hole_poly_lines
-        hole_poly_lines[hole_poly_number].append(line)
+        hole_poly_lines[hole_poly_count].append(line)
 
     # Apply new state to buttons
     triangulate_btn.config(state='normal')
@@ -104,66 +112,111 @@ def finish_wall_points(triangulate_btn, finish_button):
     drawing_canvas.bind('<ButtonRelease-1>', edit_wall_points_released)
 
 
-def edit_wall_points(event):
-    x, y = event.x, event.y
+def calculate_point_distance(click, point):
+    """Calculates distance between given point and click event using pythagoras theorem"""
+    x, y = click.x, click.y
 
+    point_x = point[0]
+    point_y = point[1]
+
+    x_diff = abs(point_x - x)
+    y_diff = abs(point_y - y)
+
+    # pythagoras theorem
+    current_distance = math.sqrt((x_diff ** 2) + (y_diff ** 2))
+
+    return current_distance
+
+
+def edit_wall_points(event):
     current_min_distance = sys.maxsize
     point_index_of_min_distance = 0
 
+    # loop through wall points
     for i in range(len(wall_points)):
         # Find the point nearest to the mouse click
-        point_x = wall_points[i][0]
-        point_y = wall_points[i][1]
-
-        x_diff = abs(point_x - x)
-        y_diff = abs(point_y - y)
-
-        # pythagoras theorem
-        current_distance = math.sqrt((x_diff ** 2) + (y_diff ** 2))
+        current_distance = calculate_point_distance(event, wall_points[i])
 
         if current_distance < current_min_distance:
             current_min_distance = current_distance
             point_index_of_min_distance = i
 
+    for i in range(len(hole_polys)):
+        for j in range(len(hole_polys[i])):
+            current_distance = calculate_point_distance(event, hole_polys[i][j])
+
+            if current_distance < current_min_distance:
+                current_min_distance = current_distance
+                point_index_of_min_distance = (i, j)
+
     if current_min_distance < 8:
         # if click is in range of a button
-        global to_be_moved_point_index
-        to_be_moved_point_index = point_index_of_min_distance
+        global to_be_moved_point_index, to_be_moved_hole_index
+
+        if type(point_index_of_min_distance) is int:
+            to_be_moved_point_index = point_index_of_min_distance
+        else:
+            to_be_moved_hole_index = point_index_of_min_distance
 
 
 def edit_wall_points_drag_motion(event):
-    if to_be_moved_point_index == -1:
+    if to_be_moved_point_index == -1 and to_be_moved_hole_index[0] == -1:
         # if drag is without the click of a button before, drag does nothing
         return
 
-    global wall_points, lines
-
+    global wall_points, lines, hole_polys, hole_poly_lines
     x, y = event.x, event.y
 
-    # define the old point with its lines
-    p0 = wall_points[to_be_moved_point_index]
-    l0 = lines[to_be_moved_point_index - 1]
-    l1 = lines[to_be_moved_point_index]
+    hole_moved = False
+    point_color = 'red'
+    if to_be_moved_point_index != -1:
+
+        # define the old point with its lines
+        p0 = wall_points[to_be_moved_point_index]
+        l0 = lines[to_be_moved_point_index - 1]
+        l1 = lines[to_be_moved_point_index]
+
+    elif to_be_moved_hole_index[0] != -1:
+        hole_moved = True
+        point_color = 'blue'
+
+        p0 = hole_polys[to_be_moved_hole_index[0]][to_be_moved_hole_index[1]]
+        l0 = hole_poly_lines[to_be_moved_hole_index[0]][to_be_moved_hole_index[1] - 1]
+        l1 = hole_poly_lines[to_be_moved_hole_index[0]][to_be_moved_hole_index[1]]
 
     # draw new point
     new_p0_id = drawing_canvas.create_oval([x - point_radius, y - point_radius,
                                             x + point_radius, y + point_radius],
-                                           outline='black', fill='red')
-    # save point as tuple to prepare saving in "wall_points"
+                                           outline='black', fill=point_color)
+    # save point as tuple to prepare saving
     new_p0 = (x, y, new_p0_id)
 
-    point_before_new_p0 = wall_points[to_be_moved_point_index - 1]
+    # wall point moved
+    if not hole_moved:
+
+        point_before_new_p0 = wall_points[to_be_moved_point_index - 1]
+        # modulo needed here in case last point in list is clicked and the index (i + 1) overflows
+        point_after_new_p0 = wall_points[(to_be_moved_point_index + 1) % len(wall_points)]
+
+    else:
+        point_before_new_p0 = hole_polys[to_be_moved_hole_index[0]][to_be_moved_hole_index[1] - 1]
+        # modulo needed here in case last point in list is clicked and the index (i + 1) overflows
+        point_after_new_p0 = hole_polys[to_be_moved_hole_index[0]][(to_be_moved_hole_index[1] + 1) % len(hole_polys[to_be_moved_hole_index[0]])]
+
     new_l0 = drawing_canvas.create_line([point_before_new_p0[0], point_before_new_p0[1],
                                          new_p0[0], new_p0[1]], fill='black')
 
-    # modulo needed here in case last point in list is clicked and the index (i + 1) overflows
-    point_after_new_p0 = wall_points[(to_be_moved_point_index + 1) % len(wall_points)]
     new_l1 = drawing_canvas.create_line([new_p0[0], new_p0[1],
-                                        point_after_new_p0[0], point_after_new_p0[1]], fill='black')
+                                         point_after_new_p0[0], point_after_new_p0[1]], fill='black')
 
-    lines[to_be_moved_point_index - 1] = new_l0
-    lines[to_be_moved_point_index] = new_l1
-    wall_points[to_be_moved_point_index] = new_p0
+    if not hole_moved:
+        lines[to_be_moved_point_index - 1] = new_l0
+        lines[to_be_moved_point_index] = new_l1
+        wall_points[to_be_moved_point_index] = new_p0
+    else:
+        hole_poly_lines[to_be_moved_hole_index[0]][to_be_moved_hole_index[1] - 1] = new_l0
+        hole_poly_lines[to_be_moved_hole_index[0]][to_be_moved_hole_index[1]] = new_l1
+        hole_polys[to_be_moved_hole_index[0]][to_be_moved_hole_index[1]] = new_p0
 
     # deleting point that has been clicked and its lines
     drawing_canvas.delete(p0[2])
@@ -173,12 +226,13 @@ def edit_wall_points_drag_motion(event):
 
 def edit_wall_points_released(_):
     # if Button-1 is released the click and drag indicator is set back to a default value
-    global to_be_moved_point_index
+    global to_be_moved_point_index, to_be_moved_hole_index
     to_be_moved_point_index = -1
+    to_be_moved_hole_index = (-1, -1)
 
 
 def draw_additional_polygons(triangulate_btn, finish_button):
-    global drawing_canvas, hole_poly_number
+    global drawing_canvas, hole_poly_count
 
     drawing_canvas.unbind('<Button-1>')
     drawing_canvas.unbind('<B1-Motion>')
@@ -187,19 +241,18 @@ def draw_additional_polygons(triangulate_btn, finish_button):
     drawing_canvas.bind('<Button-1>', draw_wall_points)
 
     global hole_polys, hole_poly_lines
-    hole_poly_number += 1
+    hole_poly_count += 1
     hole_polys.append([])
-    hole_polys[hole_poly_number] = []
+    hole_polys[hole_poly_count] = []
 
     hole_poly_lines.append([])
-    hole_poly_lines[hole_poly_number] = []
+    hole_poly_lines[hole_poly_count] = []
 
     triangulate_btn.config(state='disabled')
     finish_button.config(state='normal')
 
 
 def start_mesh_config():
-
     # Make sure there is only one popup open
     global popup_open
     if popup_open:
@@ -341,7 +394,7 @@ class OwnFrame(tk.Frame):
             finish_wall_points_btn.grid(row=0, column=1)
 
             add_sqr = tk.Button(self, text='Draw holes', command=lambda: draw_additional_polygons(triangulate_btn,
-                                                                                                   finish_wall_points_btn))
+                                                                                                  finish_wall_points_btn))
             add_sqr.grid(row=2, column=1)
 
 
