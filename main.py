@@ -27,19 +27,6 @@ mesh = None
 popup_open = False
 
 
-def drag_start(event):
-    widget = event.widget
-    widget.startX = event.x
-    widget.startY = event.y
-
-
-def drag_motion(event):
-    widget = event.widget
-    x = widget.winfo_x() - widget.startX + event.x
-    y = widget.winfo_y() - widget.startY + event.y
-    widget.place(x=x, y=y)
-
-
 def draw_wall_points(event):
     x, y = event.x, event.y
 
@@ -50,8 +37,6 @@ def draw_wall_points(event):
     point = drawing_canvas.create_oval([x - point_radius, y - point_radius,
                                         x + point_radius, y + point_radius],
                                        outline='black', fill=current_color)
-
-    current_point_list = None
 
     if hole_poly_count >= 0:
         global hole_polys
@@ -129,6 +114,9 @@ def calculate_point_distance(click, point):
 
 
 def edit_wall_points(event):
+    """Start of moving wall points.
+    After a click on the canvas happens the distance between click and every point is calculated to see if the
+    click clicked a point that will be moved in the second phase of moving wall points"""
     current_min_distance = sys.maxsize
     point_index_of_min_distance = 0
 
@@ -160,6 +148,7 @@ def edit_wall_points(event):
 
 
 def edit_wall_points_drag_motion(event):
+    """Clicked point and its lines are being redrawn at the dragging cursors location"""
     if to_be_moved_point_index == -1 and to_be_moved_hole_index[0] == -1:
         # if drag is without the click of a button before, drag does nothing
         return
@@ -225,6 +214,7 @@ def edit_wall_points_drag_motion(event):
 
 
 def edit_wall_points_released(_):
+    """End of moving points. Important variables are back to default values."""
     # if Button-1 is released the click and drag indicator is set back to a default value
     global to_be_moved_point_index, to_be_moved_hole_index
     to_be_moved_point_index = -1
@@ -253,6 +243,7 @@ def draw_additional_polygons(triangulate_btn, finish_button):
 
 
 def start_mesh_config():
+    """Popup for meshing configuration."""
     # Make sure there is only one popup open
     global popup_open
     if popup_open:
@@ -329,6 +320,7 @@ def triangulate(granularity_level,
 
 
 def start_export():
+    """Check if a mesh is already generated, before start of export."""
     if mesh is None:
         print("No mesh generated yet. Create a mesh and then try again.")
         return
