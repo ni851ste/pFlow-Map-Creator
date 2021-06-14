@@ -132,15 +132,16 @@ def export_final_version(nodes, boundaries):
     i = 0
     second_loop = False
 
-    t = time.localtime()
-    current_time = time.strftime("%H:%M", t)
-    print("Start: " + current_time)
+    #t = time.localtime()
+    #current_time = time.strftime("%H:%M", t)
+    # print("Start: " + current_time)
+    print("Starting export, this may take some time!")
 
     while i < len(boundaries) - 2:
         """First pointer is a while loop, because it needs to run two times per index. Increment every other time
         is done with the "second_loop" flag."""
 
-        # Loading progress is broken when there is a small and coarse mesh
+        # TODO Loading progress is broken when there is a small and coarse mesh
         #if 0 == i % int(len(boundaries) / 99) and not second_loop:
         #    print("", end="\r")
         #    print(str(i / int(len(boundaries) / 99)) + "%", end="")
@@ -212,35 +213,33 @@ def export_final_version(nodes, boundaries):
             exit(0)
             #continue
 
-    t = time.localtime()
-    current_time = time.strftime("%H:%M", t)
-    print("\nEnd: " + current_time)
+    #t = time.localtime()
+    #current_time = time.strftime("%H:%M", t)
+    #print("\nEnd: " + current_time)
 
-    print(str(len(found_triangles)) + " cells have been found.")
+    #print(str(len(found_triangles)) + " cells have been found.")
     #ax, _ = pg.show(mesh)
     #pg.wait()
     save_export_to_file(nodes, found_triangles)
 
 
 def save_export_to_file(nodes, found_triangles):
-    """Method to parse export data into readable structure."""
+    """Method to parse export data into readable structure.
+    <number of nodes> <number of triangles>
+    <triangles consisting of these nodes>
+    <node0> (x-coord y-coord)"""
     export_string = ""
 
     # number of nodes
-    export_string += str(len(nodes)) + "\n"
-
-    i = -1
-    for node in nodes:
-        i += 1
-        node = nodes[i]
-        export_string += str(i) + "\t" + str(node[0]) + "\t" + str(node[1]) + "\n"
-
+    # -4 because of the 4 corner background corners that are ignored when exporting
+    export_string += str(len(nodes) - 4) + "\t"
     # number of triangles
     export_string += str(len(found_triangles)) + "\n"
 
-    i = -1
-    for triangle in found_triangles:
-        i += 1
+    # triangles
+    for i in range(len(found_triangles)):
+
+        triangle = found_triangles[i]
         # Get the node ids of the triangle corners
         e1 = triangle.pop()
         e2 = triangle.pop()
@@ -257,20 +256,34 @@ def save_export_to_file(nodes, found_triangles):
         e3x = e3_coords[0] - e1_coords[0]
         e3y = e3_coords[1] - e1_coords[1]
 
-        # calculating cross product
+        # calculating cross product to order points counter clockwise
         cp = (e2x * e3y) - (e3x * e2y)
 
-        export_string += str(i) + "\t" + str(e1) + "\t"
+
+        # -4 to skip the 4 background corner nodes
+        export_string += str(e1 - 4) + "\t"
         if cp > 0:
-            export_string += str(e2) + "\t"
-            export_string += str(e3) + "\n"
+            export_string += str(e2 - 4) + "\t"
+            export_string += str(e3 - 4) + "\n"
         else:
-            export_string += str(e3) + "\t"
-            export_string += str(e2) + "\n"
+            export_string += str(e3 - 4) + "\t"
+            export_string += str(e2 - 4) + "\n"
+
+    # nodes
+    for i in range(len(nodes)):
+
+        if i <= 3:
+            # skip first 4 nodes that are the background corner pieces and are not used in the mesh
+            continue
+
+        node = nodes[i]
+        export_string += str(node[0]) + "\t" + str(node[1]) + "\n"
+
 
     with open("export.nik", "w") as text_file:
         print(export_string, file=text_file)
-    print(export_string)
+    print("Export completed! Saved in file \"export.nik\"")
+    #print(export_string)
 
 
 class LoopDone(Exception):
