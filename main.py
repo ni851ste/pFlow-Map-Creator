@@ -1,6 +1,8 @@
 import math
 import sys
+import time
 import tkinter as tk
+from tkinter import filedialog
 import tri_utils as tri
 
 window_width = "1150"
@@ -190,7 +192,8 @@ def edit_wall_points_drag_motion(event):
     else:
         point_before_new_p0 = hole_polys[to_be_moved_hole_index[0]][to_be_moved_hole_index[1] - 1]
         # modulo needed here in case last point in list is clicked and the index (i + 1) overflows
-        point_after_new_p0 = hole_polys[to_be_moved_hole_index[0]][(to_be_moved_hole_index[1] + 1) % len(hole_polys[to_be_moved_hole_index[0]])]
+        point_after_new_p0 = hole_polys[to_be_moved_hole_index[0]][
+            (to_be_moved_hole_index[1] + 1) % len(hole_polys[to_be_moved_hole_index[0]])]
 
     new_l0 = drawing_canvas.create_line([point_before_new_p0[0], point_before_new_p0[1],
                                          new_p0[0], new_p0[1]], fill='black')
@@ -328,6 +331,28 @@ def start_export():
     tri.export_mesh(mesh)
 
 
+def load_floor_plan():
+    global drawing_canvas
+
+    file = tk.filedialog.askopenfilename(initialdir="./", title="Select file",
+                                         filetypes=(("png files", "*.png"),
+                                                    ("PNG files", "*.PNG"),
+                                                    #("PNG files", "*.PNG"),
+                                                    ("all files", "*.*")))
+
+    #test_file = "campusplan.PNG"
+
+    img = tk.PhotoImage(file=file)
+    #img = img.zoom(-1)
+    drawing_canvas.config(width=img.width(), height=img.height())
+    drawing_canvas.create_image(0, 0, anchor=tk.NW, image=img)
+    drawing_canvas.pack(expand=tk.YES)
+
+    # Seems like a work around, investigate later
+    # TODO this
+    tk.mainloop()
+
+
 class MainWindow(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -336,6 +361,7 @@ class MainWindow(tk.Tk):
 
         file_menu = tk.Menu(menu_bar)
         file_menu.add_command(label="Export", command=start_export)
+        file_menu.add_command(label="Load floorplan", command=load_floor_plan)
 
         menu_bar.add_cascade(label="File", menu=file_menu)
 
@@ -352,8 +378,6 @@ class OwnFrame(tk.Frame):
     def __init__(self, parent, left):
         super().__init__(parent, width=200, height=600)
         self.left = left
-        self.parent = parent
-        self.canvas = None
 
         if left:
             # Code to run if Frame is on the left side ...
@@ -385,18 +409,18 @@ class OwnFrame(tk.Frame):
                                                                                   finish_wall_points_btn))
             finish_wall_points_btn.grid(row=0, column=1)
 
-            add_sqr = tk.Button(self, text='Draw holes', command=lambda: draw_additional_polygons(triangulate_btn,
-                                                                                                  finish_wall_points_btn))
+            add_sqr = tk.Button(self,
+                                text='Draw holes',
+                                command=lambda: draw_additional_polygons(triangulate_btn, finish_wall_points_btn))
             add_sqr.grid(row=2, column=1)
 
 
 class OwnCanvas(tk.Canvas):
     def __init__(self, parent):
-        super().__init__(parent, width=800, height=600, bg='white')
+        width = 800
+        height = 600
+        super().__init__(parent, width=width, height=height, bg='white')
         self.grid(row=0, column=0)
-
-        self.parent = parent
-        self.labels = []
 
 
 def main():
