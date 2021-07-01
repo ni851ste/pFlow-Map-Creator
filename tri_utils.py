@@ -100,7 +100,6 @@ def export_mesh(mesh):
 
     first_info_line = f.readline()
     no_of_nodes = int(first_info_line.split("\t")[0])
-    #print(str(no_of_nodes) + " nodes found.")
 
     # read nodes from file
     nodes = []
@@ -112,7 +111,6 @@ def export_mesh(mesh):
 
     second_info_line = f.readline()
     no_of_boundaries = int(second_info_line.split("\t")[0])
-    #print(str(no_of_boundaries) + " boundaries found")
 
     # read boundaries from text
     boundaries = []
@@ -167,7 +165,6 @@ def export_final_version(nodes, boundaries):
 
                 if b0 in node_set or b1 in node_set:
                     # found 2nd boundary
-                    #print("j: " + str(j))
 
                     if b0 in node_set:
                         p2 = b1
@@ -181,7 +178,6 @@ def export_final_version(nodes, boundaries):
                         # continue to move second pointer down the list
                         node_set.remove(p2)
                         continue
-                    # print(str(p0) + " " + str(p1) + " " + str(p2))
 
                     for k in range(j + 1, len(boundaries)):
                         # find 3rd boundary
@@ -202,7 +198,6 @@ def export_final_version(nodes, boundaries):
         except LoopDone:
             if second_loop:
                 i = i + 1
-                #print("i: " + str(i))
                 second_loop = False
             else:
                 second_loop = True
@@ -279,7 +274,6 @@ def save_export_to_file(nodes, found_triangles):
         node = nodes[i]
         export_string += str(node[0]) + "\t" + str(node[1]) + "\n"
 
-
     with open("export.nik", "w") as text_file:
         print(export_string, file=text_file)
     print("Export completed! Saved in file \"export.nik\"")
@@ -287,7 +281,7 @@ def save_export_to_file(nodes, found_triangles):
 
 
 class LoopDone(Exception):
-    """Custom Exception used as jump flag inside the three for-loops."""
+    """Custom Exception used as jump flag inside the export."""
     pass
 
 
