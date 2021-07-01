@@ -8,6 +8,11 @@ for pFlow.
 - Python 3.8.8
 - [PyGimli 1.2.1](https://www.pygimli.org)
 
+### To get PyGimli
+`conda create -n pg -c gimli -c conda-forge pygimli=1.2.1`
+
+`conda activate pg`
+
 ## Performance test pipeline
 - main.py - Draw a map, generate a mesh and export it
 - point generator - Three files will be created
