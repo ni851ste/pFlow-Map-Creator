@@ -140,9 +140,9 @@ def export_final_version(nodes, boundaries):
         is done with the "second_loop" flag."""
 
         # TODO Loading progress is broken when there is a small and coarse mesh
-        #if 0 == i % int(len(boundaries) / 99) and not second_loop:
-        #    print("", end="\r")
-        #    print(str(i / int(len(boundaries) / 99)) + "%", end="")
+        if 0 == i % int(len(boundaries) / 99) and not second_loop:
+            print("", end="\r")
+            print(str(i / int(len(boundaries) / 99)) + "%", end="")
 
         try:
             p0 = boundaries[i][0]
