@@ -1,6 +1,7 @@
 """Performance test for searching the triangle in which given points are."""
 
 import numpy as np
+import time
 
 from point_generator import import_mesh
 
@@ -17,6 +18,7 @@ def start_up():
     pass
 
 
+# ToDo define file on top
 #def read_random_points(path='random_points/middle_points.txt'):
 def read_random_points(path='random_points/random_points_random_triangles.txt'):
     """Function to read files with random points"""
@@ -37,12 +39,17 @@ def read_random_points(path='random_points/random_points_random_triangles.txt'):
 def test():
     point_triangle_mapping = []
 
-    print('Test start')
+    print('Test Starting!')
+    start_time = int(time.time() * 1000)
 
     for i in range(len(random_points)):
         point_triangle_mapping.append(find_triangle(random_points[i]))
 
-    print('Test end')
+    end_time = int(time.time() * 1000)
+    print('Test finished')
+    print(str(end_time - start_time) + ' ms')
+    print(str((end_time - start_time) / 1000) + ' s')
+
     pass
 
 
@@ -52,6 +59,7 @@ def find_triangle(point):
 
         # calculate area of tri
         tri_copy = tri.copy()
+        # ToDo Change set to List, see screenshot
         p1 = tri_copy.pop()
         p2 = tri_copy.pop()
         p3 = tri_copy.pop()
@@ -66,6 +74,7 @@ def find_triangle(point):
         area2 = calculate_triangle_area(a, point, c)
         area3 = calculate_triangle_area(point, b, c)
 
+        # ToDo Get rid of round and make it with a smart threshhold
         area_sum = np.round(area1 + area2 + area3, 4)
 
         # see if area equals
@@ -81,7 +90,7 @@ def calculate_triangle_area(a, b, c):
     a two tuple with x and y coordinates."""
     ab = (b[0] - a[0], b[1] - a[1])
     ac = (c[0] - a[0], c[1] - a[1])
-
+    # Cross product
     area = (ab[0] * ac[1]) - (ac[0] * ab[1])
 
     if area < 0:
