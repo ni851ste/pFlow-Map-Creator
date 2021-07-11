@@ -103,6 +103,10 @@ def finish_wall_points(triangulate_btn, finish_button, draw_holes_button):
     drawing_canvas.bind('<B1-Motion>', edit_wall_points_drag_motion)
     drawing_canvas.bind('<ButtonRelease-1>', edit_wall_points_released)
 
+    drawing_canvas.bind('<Button-3>', edit_wall_points)
+    drawing_canvas.bind('<B3-Motion>', edit_wall_points_drag_whole_poly)
+    drawing_canvas.bind('<ButtonRelease-3>', edit_wall_points_released)
+
 
 def calculate_point_distance(click, point):
     """Calculates distance between given point and click event using pythagoras theorem"""
@@ -166,13 +170,14 @@ def edit_wall_points_drag_motion(event):
     hole_moved = False
     point_color = 'red'
     if to_be_moved_point_index != -1:
-
+        # main poly point is getting moved
         # define the old point with its lines
         p0 = wall_points[to_be_moved_point_index]
         l0 = lines[to_be_moved_point_index - 1]
         l1 = lines[to_be_moved_point_index]
 
     elif to_be_moved_hole_index[0] != -1:
+        # hole poly point is moved
         hole_moved = True
         point_color = 'blue'
 
@@ -221,6 +226,95 @@ def edit_wall_points_drag_motion(event):
     drawing_canvas.delete(l1)
 
 
+def edit_wall_points_drag_whole_poly(event):
+    if to_be_moved_point_index == -1 and to_be_moved_hole_index[0] == -1:
+        # if drag is without the click of a button before, drag does nothing
+        return
+
+    global wall_points, lines, hole_polys, hole_poly_lines
+    x, y = event.x, event.y
+
+    hole_moved = False
+    point_color = 'red'
+
+    if to_be_moved_point_index != -1:
+        # main poly point is getting moved
+        # define the old point
+        p0 = wall_points[to_be_moved_point_index]
+
+        change_in_x = x - p0[0]
+        change_in_y = y - p0[1]
+
+        for i in range(len(wall_points)):
+            # drawing points
+            point = wall_points[i]
+
+            # delete old point point and line
+            drawing_canvas.delete(point[2])
+
+            # draw new point, save canvas id
+            new_point = drawing_canvas.create_oval([point[0] + change_in_x - point_radius,
+                                                    point[1] + change_in_y - point_radius,
+                                                    point[0] + change_in_x + point_radius,
+                                                    point[1] + change_in_y + point_radius],
+                                                   outline='black', fill=point_color)
+
+            # parse it back into wall_points
+            wall_points[i] = (point[0] + change_in_x, point[1] + change_in_y, new_point)
+
+        for i in range(len(wall_points)):
+            # draw lines
+            old_line = lines[i]
+            drawing_canvas.delete(old_line)
+
+            # i + 1 here, because line at j is line between point j and j + 1
+            p0 = wall_points[i]
+            p1 = wall_points[(i + 1) % len(wall_points)]
+
+            line = drawing_canvas.create_line([p0[0], p0[1], p1[0], p1[1]], fill='black')
+            lines[i] = line
+
+    elif to_be_moved_hole_index[0] != -1:
+        # hole poly point is moved
+        point_color = 'blue'
+
+        p0 = hole_polys[to_be_moved_hole_index[0]][to_be_moved_hole_index[1]]
+
+        change_in_x = x - p0[0]
+        change_in_y = y - p0[1]
+
+        for i in range(len(hole_polys[to_be_moved_hole_index[0]])):
+            # drawing points
+            point = hole_polys[to_be_moved_hole_index[0]][i]
+
+            # delete old point point and line
+            drawing_canvas.delete(point[2])
+
+            # draw new point, save canvas id
+            new_point = drawing_canvas.create_oval([point[0] + change_in_x - point_radius,
+                                                    point[1] + change_in_y - point_radius,
+                                                    point[0] + change_in_x + point_radius,
+                                                    point[1] + change_in_y + point_radius],
+                                                   outline='black', fill=point_color)
+
+            # parse it back into wall_points
+            hole_polys[to_be_moved_hole_index[0]][i] = (point[0] + change_in_x, point[1] + change_in_y, new_point)
+
+        for i in range(len(hole_polys[to_be_moved_hole_index[0]])):
+            # draw lines
+            old_line = hole_poly_lines[to_be_moved_hole_index[0]][i]
+            drawing_canvas.delete(old_line)
+
+            # i + 1 here, because line at j is line between point j and j + 1
+            p0 = hole_polys[to_be_moved_hole_index[0]][i]
+            p1 = hole_polys[to_be_moved_hole_index[0]][(i + 1) % len(wall_points)]
+
+            line = drawing_canvas.create_line([p0[0], p0[1], p1[0], p1[1]], fill='black')
+            hole_poly_lines[to_be_moved_hole_index[0]][i] = line
+
+
+
+
 def edit_wall_points_released(_):
     """End of moving points. Important variables are back to default values."""
     # if Button-1 is released the click and drag indicator is set back to a default value
@@ -235,6 +329,9 @@ def draw_additional_polygons(triangulate_btn, finish_button, draw_holes_button):
     drawing_canvas.unbind('<Button-1>')
     drawing_canvas.unbind('<B1-Motion>')
     drawing_canvas.unbind('<ButtonRelease-1>')
+    drawing_canvas.unbind('<Button-3>')
+    drawing_canvas.unbind('<B3-Motion>')
+    drawing_canvas.unbind('<ButtonRelease-3>')
 
     drawing_canvas.bind('<Button-1>', draw_wall_points)
 
@@ -363,12 +460,13 @@ def load_floor_plan():
 class MainWindow(tk.Tk):
     def __init__(self):
         super().__init__()
+        self.title('pFlow Map Creator')
 
         menu_bar = tk.Menu(self)
 
         file_menu = tk.Menu(menu_bar)
         file_menu.add_command(label="Export", command=start_export)
-        file_menu.add_command(label="Load floorplan", command=load_floor_plan)
+        file_menu.add_command(label="Load floor plan", command=load_floor_plan)
 
         menu_bar.add_cascade(label="File", menu=file_menu)
 
