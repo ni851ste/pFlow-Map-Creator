@@ -28,6 +28,10 @@ hole_poly_lines = []
 mesh = None
 popup_open = False
 
+state_saved = False
+save_file_path = ""
+currently_loaded_floor_plan = ""
+
 
 def draw_wall_points(event):
     x, y = event.x, event.y
@@ -68,7 +72,6 @@ def draw_wall_points(event):
 
 
 def finish_wall_points(triangulate_btn, finish_button, draw_holes_button):
-
     if hole_poly_count > -1 and len(hole_polys[hole_poly_count]) < 3:
         print('Cant finish, since not enough points have been placed.')
         return
@@ -98,14 +101,7 @@ def finish_wall_points(triangulate_btn, finish_button, draw_holes_button):
     draw_holes_button.config(state='normal')
     finish_button.config(state='disabled')
 
-    # Unbind drawing new points
-    drawing_canvas.bind('<Button-1>', edit_wall_points)
-    drawing_canvas.bind('<B1-Motion>', edit_wall_points_drag_motion)
-    drawing_canvas.bind('<ButtonRelease-1>', edit_wall_points_released)
-
-    drawing_canvas.bind('<Button-3>', edit_wall_points)
-    drawing_canvas.bind('<B3-Motion>', edit_wall_points_drag_whole_poly)
-    drawing_canvas.bind('<ButtonRelease-3>', edit_wall_points_released)
+    switch_editing_state(1)
 
 
 def calculate_point_distance(click, point):
@@ -307,12 +303,10 @@ def edit_wall_points_drag_whole_poly(event):
 
             # i + 1 here, because line at j is line between point j and j + 1
             p0 = hole_polys[to_be_moved_hole_index[0]][i]
-            p1 = hole_polys[to_be_moved_hole_index[0]][(i + 1) % len(wall_points)]
+            p1 = hole_polys[to_be_moved_hole_index[0]][(i + 1) % len(hole_polys[to_be_moved_hole_index[0]])]
 
             line = drawing_canvas.create_line([p0[0], p0[1], p1[0], p1[1]], fill='black')
             hole_poly_lines[to_be_moved_hole_index[0]][i] = line
-
-
 
 
 def edit_wall_points_released(_):
@@ -324,16 +318,9 @@ def edit_wall_points_released(_):
 
 
 def draw_additional_polygons(triangulate_btn, finish_button, draw_holes_button):
-    global drawing_canvas, hole_poly_count
+    global hole_poly_count
 
-    drawing_canvas.unbind('<Button-1>')
-    drawing_canvas.unbind('<B1-Motion>')
-    drawing_canvas.unbind('<ButtonRelease-1>')
-    drawing_canvas.unbind('<Button-3>')
-    drawing_canvas.unbind('<B3-Motion>')
-    drawing_canvas.unbind('<ButtonRelease-3>')
-
-    drawing_canvas.bind('<Button-1>', draw_wall_points)
+    switch_editing_state(0)
 
     global hole_polys, hole_poly_lines
     hole_poly_count += 1
@@ -440,21 +427,216 @@ def load_floor_plan():
     file = tk.filedialog.askopenfilename(initialdir="./", title="Select file",
                                          filetypes=(("png files", "*.png"),
                                                     ("PNG files", "*.PNG"),
-                                                    #("PNG files", "*.PNG"),
-                                                    #("all files", "*.*")
+                                                    # ("PNG files", "*.PNG"),
+                                                    # ("all files", "*.*")
                                                     ))
 
-    #test_file = "campusplan.PNG"
-
     img = tk.PhotoImage(file=file)
-    #img = img.zoom(-1)
+
     drawing_canvas.config(width=img.width(), height=img.height())
     drawing_canvas.create_image(0, 0, anchor=tk.NW, image=img)
     drawing_canvas.pack(expand=tk.YES)
 
+    global currently_loaded_floor_plan
+    currently_loaded_floor_plan = file
+
     # Seems like a work around, investigate later
     # TODO this
     tk.mainloop()
+
+
+def save_to_file():
+    save = create_save_to_file_string()
+
+    # .nsv -> nik save
+    file = tk.filedialog.asksaveasfile(mode="w",
+                                       defaultextension=".nsv",
+                                       initialdir="./",
+                                       title="Choose where to save the file",
+                                       initialfile="save.nsv")
+
+    if file is None:
+        return
+
+    file.write(save)
+    file.close()
+
+    global save_file_path, state_saved
+    save_file_path = file.name
+    state_saved = True
+
+
+def save_to_file_quick():
+    if len(save_file_path) > 0:
+        with open(save_file_path, "w") as text_file:
+            print(create_save_to_file_string(), file=text_file)
+    else:
+        save_to_file()
+
+
+def load_from_file():
+    # ToDo check if stuff is already saved
+    # ToDo check if buttons are disabled at the right time
+    # ToDo beim laden einer datei alles vorher resetten
+    # ToDo state richtig setzen bei fertigem import
+
+    file = tk.filedialog.askopenfilename(initialdir="./", title="Select nsv file",
+                                         filetypes=(("nsv files", "*.nsv"),
+                                                    ("all files", "*.*")))
+
+    if len(file) == 0:
+        return
+
+    f = open(file, "r")
+
+    global wall_points, lines, hole_polys, hole_poly_lines, hole_poly_count, drawing_canvas, save_file_path
+
+    # deleting previously drawn structures
+    for i in range(len(wall_points)):
+        drawing_canvas.delete(wall_points[i][2])
+        drawing_canvas.delete(lines[i])
+
+    for i in range(len(hole_polys)):
+        for j in range(len(hole_polys[i])):
+            drawing_canvas.delete(hole_polys[i][j][2])
+            drawing_canvas.delete(hole_poly_lines[i][j])
+
+    # resetting important data structures
+    wall_points = []
+    lines = []
+
+    hole_poly_count = -1
+    hole_polys = []
+    hole_poly_lines = []
+
+    # start reading file
+    number_of_holes = int(f.readline())
+
+    # loaded floor plan
+    line = f.readline()[:-1]
+    if line != "-":
+        img = tk.PhotoImage(file=line)
+
+        drawing_canvas.config(width=img.width(), height=img.height())
+        drawing_canvas.create_image(0, 0, anchor=tk.NW, image=img)
+        drawing_canvas.pack(expand=tk.YES)
+        tk.mainloop()
+
+    # main poly
+    node_count_main_poly = int(f.readline())
+    for i in range(node_count_main_poly):
+        line = f.readline().split("\t")
+        x = int(line[0])
+        y = int(line[1])
+
+        # draw new point, save canvas id
+        new_point_id = drawing_canvas.create_oval([x - point_radius,
+                                                   y - point_radius,
+                                                   x + point_radius,
+                                                   y + point_radius],
+                                                  outline='black', fill='red')
+
+        wall_points.append((x, y, new_point_id))
+
+    lines = draw_lines_between_points(wall_points)
+
+    # holes
+    for i in range(number_of_holes):
+        node_count_current_hole = int(f.readline())
+
+        hole_poly_count += 1
+        hole_polys.append([])
+        hole_poly_lines.append([])
+
+        # one hole
+        for j in range(node_count_current_hole):
+
+            line = f.readline().split("\t")
+            x = int(line[0])
+            y = int(line[1])
+
+            # draw new point, save canvas id
+            new_point_id = drawing_canvas.create_oval([x - point_radius,
+                                                       y - point_radius,
+                                                       x + point_radius,
+                                                       y + point_radius],
+                                                      outline='black', fill='blue')
+
+            hole_polys[hole_poly_count].append((x, y, new_point_id))
+
+        hole_poly_lines[hole_poly_count].append([])
+        hole_poly_lines[hole_poly_count] = draw_lines_between_points(hole_polys[hole_poly_count])
+
+    switch_editing_state(1)
+    save_file_path = file
+
+    # TODO aufgehört beim parsen des main polys
+    #  ggf das zeichnen von linien in the fnc wrappen, ad ich das oben auch brauche
+
+
+def create_save_to_file_string():
+    save = str(hole_poly_count + 1) + "\n"
+
+    if len(currently_loaded_floor_plan) > 0:
+        save += currently_loaded_floor_plan + "\n"
+    else:
+        save += "-\n"
+
+    # count of nodes, then nodes
+    save += str(len(wall_points)) + "\n"
+    for point in wall_points:
+        save += str(point[0]) + "\t" + str(point[1]) + "\n"
+
+    # holes
+    for i in range(hole_poly_count + 1):
+        save += str(len(hole_polys[i])) + "\n"
+        for point in hole_polys[i]:
+            save += str(point[0]) + "\t" + str(point[1]) + "\n"
+
+    return save
+
+
+def draw_lines_between_points(points):
+    """points is an array of tuples of points with [0] as x coords and [1] as y
+    returns list of line ids"""
+
+    drawn_lines = []
+    for i in range(len(points)):
+
+        p0 = points[i]
+        p1 = points[(i + 1) % len(points)]
+
+        line = drawing_canvas.create_line([p0[0], p0[1], p1[0], p1[1]], fill='black')
+        drawn_lines.append(line)
+
+    return drawn_lines
+
+
+def switch_editing_state(state_id):
+    """State 0: Creating polygon state
+    State 1: Editing polygon state"""
+
+    global drawing_canvas
+
+    if state_id == 0:
+        drawing_canvas.unbind('<Button-1>')
+        drawing_canvas.unbind('<B1-Motion>')
+        drawing_canvas.unbind('<ButtonRelease-1>')
+        drawing_canvas.unbind('<Button-3>')
+        drawing_canvas.unbind('<B3-Motion>')
+        drawing_canvas.unbind('<ButtonRelease-3>')
+
+        drawing_canvas.bind('<Button-1>', draw_wall_points)
+    elif state_id == 1:
+        # Unbind drawing new points
+        drawing_canvas.bind('<Button-1>', edit_wall_points)
+        drawing_canvas.bind('<B1-Motion>', edit_wall_points_drag_motion)
+        drawing_canvas.bind('<ButtonRelease-1>', edit_wall_points_released)
+
+        drawing_canvas.bind('<Button-3>', edit_wall_points)
+        drawing_canvas.bind('<B3-Motion>', edit_wall_points_drag_whole_poly)
+        drawing_canvas.bind('<ButtonRelease-3>', edit_wall_points_released)
+
 
 
 class MainWindow(tk.Tk):
@@ -465,6 +647,9 @@ class MainWindow(tk.Tk):
         menu_bar = tk.Menu(self)
 
         file_menu = tk.Menu(menu_bar)
+        file_menu.add_command(label="Save", command=save_to_file_quick)
+        file_menu.add_command(label="Save As", command=save_to_file)
+        file_menu.add_command(label="Open", command=load_from_file)
         file_menu.add_command(label="Export", command=start_export)
         file_menu.add_command(label="Load floor plan", command=load_floor_plan)
 
@@ -503,15 +688,15 @@ class OwnFrame(tk.Frame):
                 .grid(row=0, column=0, padx=0, pady=0)
 
             text = 'Start clicking on the canvas to create corners of a polygon.\n' + \
-                'Once finished press the \'Finish Points\' Button to draw the\n' + \
-                'last line and finish the current polygon. Buttons may be\n' + \
-                'moved by drag and drop. To draw holes click the \'Draw Holes\'\n' + \
-                'Button and start clicking on the canvas.\n\n' + \
-                'You may import a floor plan as background to make the drawing easier\n' + \
-                'in the \'File\' menu. A mesh of the polygon and its holes may be\n' + \
-                'generated by pressing \'Calculate Mesh\' button. The mesh can be\n' + \
-                'saved by clicking \'Export\' in the \'File\' Menu.\n' + \
-                'Export will be saved as \'export.nik\'.'
+                   'Once finished press the \'Finish Points\' Button to draw the\n' + \
+                   'last line and finish the current polygon. Buttons may be\n' + \
+                   'moved by drag and drop. To draw holes click the \'Draw Holes\'\n' + \
+                   'Button and start clicking on the canvas.\n\n' + \
+                   'You may import a floor plan as background to make the drawing easier\n' + \
+                   'in the \'File\' menu. A mesh of the polygon and its holes may be\n' + \
+                   'generated by pressing \'Calculate Mesh\' button. The mesh can be\n' + \
+                   'saved by clicking \'Export\' in the \'File\' Menu.\n' + \
+                   'Export will be saved as \'export.nik\'.'
 
             instructions = tk.Label(self, text=text)
             instructions.grid(row=1, column=0, padx=5, pady=20)
@@ -534,8 +719,6 @@ class OwnFrame(tk.Frame):
             finish_wall_points_btn.grid(row=2, column=0, pady=5)
             triangulate_btn.grid(row=3, column=0, pady=5)
             draw_holes_btn.grid(row=4, column=0, pady=5)
-
-
 
 
 class OwnCanvas(tk.Canvas):
