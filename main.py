@@ -1,6 +1,5 @@
 import math
 import sys
-import time
 import tkinter as tk
 from tkinter import filedialog
 import tri_utils as tri
@@ -9,8 +8,15 @@ window_width = "1300"
 window_height = "610"
 point_radius = 5
 
+main_window = None
 # TODO -1- Needs work for clean separation into classes
 drawing_canvas: tk.Canvas = None
+
+# buttons
+finish_wall_points_btn: tk.Button = None
+triangulate_btn: tk.Button = None
+draw_holes_btn: tk.Button = None
+
 
 # Labels are obstacles like tables etc
 labels = []
@@ -71,7 +77,7 @@ def draw_wall_points(event):
             lines.append(line)
 
 
-def finish_wall_points(triangulate_btn, finish_button, draw_holes_button):
+def finish_wall_points():
     if hole_poly_count > -1 and len(hole_polys[hole_poly_count]) < 3:
         print('Cant finish, since not enough points have been placed.')
         return
@@ -95,11 +101,6 @@ def finish_wall_points(triangulate_btn, finish_button, draw_holes_button):
         line = drawing_canvas.create_line([p1[0], p1[1], p2[0], p2[1]], fill='black')
         global hole_poly_lines
         hole_poly_lines[hole_poly_count].append(line)
-
-    # Apply new state to buttons
-    triangulate_btn.config(state='normal')
-    draw_holes_button.config(state='normal')
-    finish_button.config(state='disabled')
 
     switch_editing_state(1)
 
@@ -317,7 +318,7 @@ def edit_wall_points_released(_):
     to_be_moved_hole_index = (-1, -1)
 
 
-def draw_additional_polygons(triangulate_btn, finish_button, draw_holes_button):
+def draw_additional_polygons():
     global hole_poly_count
 
     switch_editing_state(0)
@@ -329,10 +330,6 @@ def draw_additional_polygons(triangulate_btn, finish_button, draw_holes_button):
 
     hole_poly_lines.append([])
     hole_poly_lines[hole_poly_count] = []
-
-    triangulate_btn.config(state='disabled')
-    draw_holes_button.config(state='disabled')
-    finish_button.config(state='normal')
 
 
 def start_mesh_config():
@@ -442,6 +439,10 @@ def load_floor_plan():
 
     # Seems like a work around, investigate later
     # TODO this
+    #drawing_canvas.update()
+    #main_window.update_idletasks()
+    #main_window.update()
+    #main_window.mainloop()
     tk.mainloop()
 
 
@@ -520,7 +521,8 @@ def load_from_file():
         drawing_canvas.config(width=img.width(), height=img.height())
         drawing_canvas.create_image(0, 0, anchor=tk.NW, image=img)
         drawing_canvas.pack(expand=tk.YES)
-        tk.mainloop()
+        global main_window
+        drawing_canvas.update()
 
     # main poly
     node_count_main_poly = int(f.readline())
@@ -627,6 +629,12 @@ def switch_editing_state(state_id):
         drawing_canvas.unbind('<ButtonRelease-3>')
 
         drawing_canvas.bind('<Button-1>', draw_wall_points)
+
+        # global triangulate_btn, draw_holes_button, finish_button
+        triangulate_btn.config(state='disabled')
+        draw_holes_btn.config(state='disabled')
+        finish_wall_points_btn.config(state='normal')
+
     elif state_id == 1:
         # Unbind drawing new points
         drawing_canvas.bind('<Button-1>', edit_wall_points)
@@ -637,6 +645,10 @@ def switch_editing_state(state_id):
         drawing_canvas.bind('<B3-Motion>', edit_wall_points_drag_whole_poly)
         drawing_canvas.bind('<ButtonRelease-3>', edit_wall_points_released)
 
+        # Apply new state to buttons
+        triangulate_btn.config(state='normal')
+        draw_holes_btn.config(state='normal')
+        finish_wall_points_btn.config(state='disabled')
 
 
 class MainWindow(tk.Tk):
@@ -660,6 +672,9 @@ class MainWindow(tk.Tk):
 
         self.leftFrame = OwnFrame(self, True)
         self.rightFrame = OwnFrame(self, False)
+
+        global main_window
+        main_window = self
 
         self.mainloop()
 
@@ -701,20 +716,18 @@ class OwnFrame(tk.Frame):
             instructions = tk.Label(self, text=text)
             instructions.grid(row=1, column=0, padx=5, pady=20)
 
+            global triangulate_btn, draw_holes_btn, finish_wall_points_btn
+
             triangulate_btn = tk.Button(self, text='Calculate Mesh', command=start_mesh_config, state=tk.DISABLED)
 
             draw_holes_btn = tk.Button(self,
                                        text='Draw holes',
-                                       command=lambda: draw_additional_polygons(triangulate_btn,
-                                                                                finish_wall_points_btn,
-                                                                                draw_holes_btn),
+                                       command=lambda: draw_additional_polygons(),
                                        state=tk.DISABLED)
 
             finish_wall_points_btn = tk.Button(self,
                                                text='Finish Points',
-                                               command=lambda: finish_wall_points(triangulate_btn,
-                                                                                  finish_wall_points_btn,
-                                                                                  draw_holes_btn))
+                                               command=lambda: finish_wall_points())
 
             finish_wall_points_btn.grid(row=2, column=0, pady=5)
             triangulate_btn.grid(row=3, column=0, pady=5)
