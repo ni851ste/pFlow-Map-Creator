@@ -11,7 +11,6 @@ segment_gran = int(1 / (granularity_old * 10))
 def main():
     area = 0.01
     w = mt.createWorld(start=[-5, -5], end=[5, 5], area=area)
-    # TODO what does "leftDirection" mean?
     l1 = mt.createLine(start=[2, 2], end=[1, 2], leftDirection=False)
     # l2 = mt.createLine(start=[2, 2], end=[2, 2], leftDirection=False)
 
@@ -120,6 +119,7 @@ def export_mesh(mesh):
 
         boundaries.append((int(split_line[1]), int(split_line[2])))
 
+    f.close()
     export_final_version(nodes, boundaries)
 
 
@@ -276,7 +276,7 @@ def save_export_to_file(nodes, found_triangles):
 
     with open("export.nik", "w") as text_file:
         print(export_string, file=text_file)
-    print("Export completed! Saved in file \"export.nik\"")
+    print("\rExport completed! Saved in file \"export.nik\"")
     #print(export_string)
 
 

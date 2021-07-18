@@ -9,11 +9,11 @@ in random triangles"""
 import os
 import random
 
-amount_of_random_generated_triangles = 2000
+amount_of_random_generated_points = 15000
 
 
-def generate_points():
-    nodes, triangles = import_mesh()
+def generate_points(amount):
+    nodes, triangles = import_mesh("o_gebaeude_export.nik")
 
     path = str(os.getcwd()) + "/random_points"
     if not os.path.exists(path):
@@ -21,7 +21,7 @@ def generate_points():
 
     generate_middle_points(nodes, triangles)
     generate_random_points(nodes, triangles)
-    generate_random_points_in_random_triangles(nodes, triangles, count=amount_of_random_generated_triangles)
+    generate_random_points_in_random_triangles(nodes, triangles, count=amount)
 
 
 def generate_middle_points(nodes, triangles):
@@ -121,9 +121,8 @@ def generate_random_points_in_random_triangles(nodes, triangles, count=0):
         print(export_string, file=out)
 
 
-def import_mesh():
-    # ToDo make it read default export path
-    with open("../export.nik", "r") as f:
+def import_mesh(mesh_file="o_gebaeude_export.nik"):
+    with open("../" + mesh_file, "r") as f:
 
         first_line = f.readline().split('\t')
 
@@ -148,4 +147,4 @@ def import_mesh():
 
 
 if __name__ == "__main__":
-    generate_points()
+    generate_points(amount_of_random_generated_points)

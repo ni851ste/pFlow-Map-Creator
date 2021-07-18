@@ -6,7 +6,7 @@ import tri_utils as tri
 
 window_width = "1300"
 window_height = "610"
-point_radius = 5
+point_radius = 3
 
 main_window = None
 # TODO -1- Needs work for clean separation into classes
@@ -478,8 +478,6 @@ def save_to_file_quick():
 def load_from_file():
     # ToDo check if stuff is already saved
     # ToDo check if buttons are disabled at the right time
-    # ToDo beim laden einer datei alles vorher resetten
-    # ToDo state richtig setzen bei fertigem import
 
     file = tk.filedialog.askopenfilename(initialdir="./", title="Select nsv file",
                                          filetypes=(("nsv files", "*.nsv"),
@@ -522,7 +520,7 @@ def load_from_file():
         drawing_canvas.create_image(0, 0, anchor=tk.NW, image=img)
         drawing_canvas.pack(expand=tk.YES)
         global main_window
-        drawing_canvas.update()
+        main_window.update()
 
     # main poly
     node_count_main_poly = int(f.readline())
@@ -571,9 +569,6 @@ def load_from_file():
 
     switch_editing_state(1)
     save_file_path = file
-
-    # TODO aufgehört beim parsen des main polys
-    #  ggf das zeichnen von linien in the fnc wrappen, ad ich das oben auch brauche
 
 
 def create_save_to_file_string():
