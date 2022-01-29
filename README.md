@@ -12,7 +12,7 @@ for pFlow.
 `conda create -n pg -c gimli -c conda-forge pygimli=1.2.1`
 
 `conda activate pg`
-
+# ToDo Change this
 ## Performance test pipeline
 - main.py - Draw a map, generate a mesh and export it
 - point generator - Three files will be created
@@ -24,4 +24,6 @@ for pFlow.
     - **random_points_random_triangles.txt** A defined amount of points
       in a randomly chosen triangle. Define in **point_generator.py**
        `amount_of_random_generated_triangles`
+      
+-
       
